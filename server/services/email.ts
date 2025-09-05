@@ -1,5 +1,7 @@
-// Simple email logging service for development
-// In production, you would replace this with a real email service
+import { Resend } from 'resend';
+
+// Initialize Resend
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 interface EmailParams {
   to: string;
@@ -11,19 +13,34 @@ interface EmailParams {
 
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
-    // For development, we'll log the email to console
-    console.log('\n🔗 MAGIC LINK EMAIL SENT');
-    console.log('=====================================');
-    console.log(`To: ${params.to}`);
-    console.log(`From: ${params.from}`);
-    console.log(`Subject: ${params.subject}`);
-    console.log('-------------------------------------');
-    console.log(params.text);
-    console.log('=====================================\n');
-    
-    // Simulate email delivery delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    if (!resend || !process.env.RESEND_API_KEY) {
+      // Fallback to console logging if no API key is configured
+      console.log('\n🔗 MAGIC LINK EMAIL (Console Mode - No RESEND_API_KEY)');
+      console.log('=====================================');
+      console.log(`To: ${params.to}`);
+      console.log(`From: ${params.from}`);
+      console.log(`Subject: ${params.subject}`);
+      console.log('-------------------------------------');
+      console.log(params.text);
+      console.log('=====================================\n');
+      return true;
+    }
+
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: params.from,
+      to: params.to,
+      subject: params.subject,
+      text: params.text,
+      html: params.html,
+    });
+
+    if (error) {
+      console.error('Resend email error:', error);
+      return false;
+    }
+
+    console.log(`✅ Email sent successfully via Resend! Email ID: ${data?.id}`);
     return true;
   } catch (error) {
     console.error('Email service error:', error);
@@ -38,7 +55,7 @@ export function generateMagicLinkEmail(email: string, magicLink: string, videoTi
 
   return {
     to: email,
-    from: process.env.FROM_EMAIL || 'noreply@tasksafe.com',
+    from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
     subject: `TaskSafe: Access Link for "${videoTitle}"`,
     text: `
 Your secure access link for "${videoTitle}" is ready.
