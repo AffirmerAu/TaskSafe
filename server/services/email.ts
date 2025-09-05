@@ -57,7 +57,7 @@ export function generateMagicLinkEmail(email: string, magicLink: string, videoTi
 
   return {
     to: email,
-    from: 'onboarding@resend.dev',
+    from: 'noreply@affirmer.education',
     subject: `TaskSafe: Access Link for "${videoTitle}"`,
     text: `
 Your secure access link for "${videoTitle}" is ready.
