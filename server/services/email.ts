@@ -27,6 +27,8 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
     }
 
     // Send email using Resend
+    console.log(`📧 Attempting to send email from: ${params.from} to: ${params.to}`);
+    
     const { data, error } = await resend.emails.send({
       from: params.from,
       to: params.to,
