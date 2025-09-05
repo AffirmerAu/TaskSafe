@@ -107,17 +107,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Access Instructions */}
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Request Access
-            </h3>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Enter your email address to receive secure access to this training video. 
-              Each link is unique and tracked for compliance purposes.
-            </p>
-          </div>
-
           {/* Email Access Form - Centered */}
           <div className="max-w-md mx-auto">
             <EmailForm onEmailSent={handleEmailSent} video={video} />
