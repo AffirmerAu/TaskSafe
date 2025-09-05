@@ -184,7 +184,7 @@ export default function VideoPlayer() {
                 <div className="relative bg-black aspect-video">
                   {video.videoUrl.includes('vimeo.com') ? (
                     <iframe
-                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&player_id=0&app_id=58479`}
+                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=1&player_id=0&app_id=58479`}
                       className="w-full h-full"
                       frameBorder="0"
                       allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
@@ -197,8 +197,13 @@ export default function VideoPlayer() {
                       ref={videoRef}
                       className="w-full h-full"
                       controls
+                      autoPlay
+                      muted
+                      playsInline
+                      preload="metadata"
                       poster={video.thumbnailUrl || ""}
                       data-testid="video-player"
+                      onLoadedMetadata={() => setIsVideoLoaded(true)}
                     >
                       <source src={video.videoUrl} type="video/mp4" />
                       Your browser does not support the video tag.
