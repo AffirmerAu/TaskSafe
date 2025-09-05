@@ -146,12 +146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const video = await storage.createVideo({
-        title: "Workplace Safety Training - Module 3",
-        description: "Essential safety protocols and emergency procedures for manufacturing environments. This module covers personal protective equipment, hazard identification, and incident reporting.",
-        thumbnailUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=450",
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        duration: "12:34",
-        category: "Safety Training",
+        title: "Use of Aircraft Wheel Chocks and Safety Cones",
+        description: "This video demonstrates the safe use of aircraft wheel chocks and the correct positioning of safety cones around aircraft.",
+        thumbnailUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=450",
+        videoUrl: "https://vimeo.com/887830582/45ac7f1f05",
+        duration: "8:45",
+        category: "Aircraft Safety Training",
       });
 
       res.json({ message: "Video seeded successfully", video });
