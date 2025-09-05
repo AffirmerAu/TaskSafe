@@ -182,16 +182,28 @@ export default function VideoPlayer() {
             <CardContent className="p-0">
               <div className="relative">
                 <div className="relative bg-black aspect-video">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full"
-                    controls
-                    poster={video.thumbnailUrl || ""}
-                    data-testid="video-player"
-                  >
-                    <source src={video.videoUrl} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
+                  {video.videoUrl.includes('vimeo.com') ? (
+                    <iframe
+                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&player_id=0&app_id=58479`}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+                      title={video.title}
+                      data-testid="video-player"
+                      onLoad={() => setIsVideoLoaded(true)}
+                    />
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full"
+                      controls
+                      poster={video.thumbnailUrl || ""}
+                      data-testid="video-player"
+                    >
+                      <source src={video.videoUrl} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  )}
                   
                   {!isVideoLoaded && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
