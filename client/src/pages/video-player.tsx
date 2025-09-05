@@ -224,21 +224,13 @@ export default function VideoPlayer() {
 
               {/* Video Info */}
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold text-foreground mb-2" data-testid="text-video-title">
-                      {video.title}
-                    </h1>
-                    <p className="text-muted-foreground" data-testid="text-video-description">
-                      {video.description}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">Access Token</div>
-                    <div className="font-mono text-xs bg-muted px-2 py-1 rounded" data-testid="text-access-token">
-                      {token.substring(0, 8)}...{token.substring(token.length - 8)}
-                    </div>
-                  </div>
+                <div className="mb-4">
+                  <h1 className="text-2xl font-bold text-foreground mb-2" data-testid="text-video-title">
+                    {video.title}
+                  </h1>
+                  <p className="text-muted-foreground" data-testid="text-video-description">
+                    {video.description}
+                  </p>
                 </div>
 
                 {/* Video Metadata */}
@@ -311,6 +303,18 @@ export default function VideoPlayer() {
                       {progress.completionPercentage >= 100 ? 'Yes' : 'No'}
                     </span>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Access Token - Bottom of Page */}
+          <Card className="shadow-sm mt-8">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-2">Access Token</div>
+                <div className="font-mono text-xs bg-muted px-3 py-2 rounded inline-block" data-testid="text-access-token">
+                  {token.substring(0, 8)}...{token.substring(token.length - 8)}
                 </div>
               </div>
             </CardContent>
