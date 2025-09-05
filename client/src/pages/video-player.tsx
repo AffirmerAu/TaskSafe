@@ -216,7 +216,7 @@ export default function VideoPlayer() {
                 </div>
 
                 {/* Video Controls Info */}
-                <div className="absolute bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded-md text-sm">
+                <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-2 rounded-md text-sm">
                   <Eye className="inline h-4 w-4 mr-2" />
                   <span>Viewing tracked for compliance</span>
                 </div>
