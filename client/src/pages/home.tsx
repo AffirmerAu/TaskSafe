@@ -93,6 +93,16 @@ export default function Home() {
                 <p className="text-muted-foreground mb-4" data-testid="text-video-description">
                   {video.description}
                 </p>
+                <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <GraduationCap className="h-4 w-4" />
+                    <span>Training Required</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Tag className="h-4 w-4" />
+                    <span>Certification Available</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
