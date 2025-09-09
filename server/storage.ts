@@ -3,6 +3,7 @@ import {
   magicLinks, 
   accessLogs,
   adminUsers,
+  companyTags,
   type Video, 
   type InsertVideo,
   type MagicLink,
@@ -10,7 +11,9 @@ import {
   type AccessLog,
   type InsertAccessLog,
   type AdminUser,
-  type InsertAdminUser
+  type InsertAdminUser,
+  type CompanyTag,
+  type InsertCompanyTag
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, or, sql } from "drizzle-orm";
@@ -33,7 +36,7 @@ export interface IStorage {
   createAccessLog(accessLog: InsertAccessLog): Promise<AccessLog>;
   updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void>;
   getAccessLogsByVideo(videoId: string): Promise<AccessLog[]>;
-  getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string })[]>;
+  getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]>;
   getVideoAnalytics(videoId: string): Promise<{
     totalViews: number;
     totalWatchTime: number;
@@ -47,6 +50,12 @@ export interface IStorage {
   getAllAdminUsers(): Promise<AdminUser[]>;
   updateAdminUser(id: string, adminUser: Partial<InsertAdminUser>): Promise<AdminUser>;
   deleteAdminUser(id: string): Promise<void>;
+  
+  // Company tag methods
+  getAllCompanyTags(): Promise<CompanyTag[]>;
+  createCompanyTag(companyTag: InsertCompanyTag): Promise<CompanyTag>;
+  updateCompanyTag(id: string, companyTag: Partial<InsertCompanyTag>): Promise<CompanyTag>;
+  deleteCompanyTag(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -211,6 +220,36 @@ export class DatabaseStorage implements IStorage {
     await db.update(adminUsers)
       .set({ isActive: false })
       .where(eq(adminUsers.id, id));
+  }
+
+  // Company tag methods
+  async getAllCompanyTags(): Promise<CompanyTag[]> {
+    return await db.select().from(companyTags)
+      .where(eq(companyTags.isActive, true))
+      .orderBy(desc(companyTags.createdAt));
+  }
+
+  async createCompanyTag(insertCompanyTag: InsertCompanyTag): Promise<CompanyTag> {
+    const [companyTag] = await db
+      .insert(companyTags)
+      .values(insertCompanyTag)
+      .returning();
+    return companyTag;
+  }
+
+  async updateCompanyTag(id: string, companyTag: Partial<InsertCompanyTag>): Promise<CompanyTag> {
+    const [updatedCompanyTag] = await db
+      .update(companyTags)
+      .set(companyTag)
+      .where(eq(companyTags.id, id))
+      .returning();
+    return updatedCompanyTag;
+  }
+
+  async deleteCompanyTag(id: string): Promise<void> {
+    await db.update(companyTags)
+      .set({ isActive: false })
+      .where(eq(companyTags.id, id));
   }
 }
 
