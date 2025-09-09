@@ -33,12 +33,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request access via email
   app.post("/api/request-access", async (req: Request, res: Response) => {
     try {
-      const { email } = requestAccessSchema.parse(req.body);
+      const { email, videoId } = requestAccessSchema.parse(req.body);
       
-      // Get the active video (for demo, we'll use the first active video)
-      const video = await storage.getActiveVideo();
-      if (!video) {
-        return res.status(404).json({ message: "No training video available" });
+      // Get specific video if videoId provided, otherwise get active video
+      const video = videoId 
+        ? await storage.getVideo(videoId)
+        : await storage.getActiveVideo();
+        
+      if (!video || !video.isActive) {
+        return res.status(404).json({ message: "Training video not found or not available" });
       }
 
       // Generate magic link token

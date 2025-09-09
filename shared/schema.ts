@@ -111,6 +111,7 @@ export const insertAccessLogSchema = createInsertSchema(accessLogs).omit({
 
 export const requestAccessSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
+  videoId: z.string().optional(),
 });
 
 export const updateProgressSchema = z.object({
