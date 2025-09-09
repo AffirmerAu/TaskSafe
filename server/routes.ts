@@ -395,18 +395,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const video = await storage.createVideo({
-        title: "Use of Aircraft Wheel Chocks and Safety Cones",
-        description: "This video demonstrates the safe use of aircraft wheel chocks and the correct positioning of safety cones around aircraft.",
-        thumbnailUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=450",
-        videoUrl: "https://vimeo.com/887830582/45ac7f1f05",
-        duration: "8:45",
-        category: "Aircraft Safety Training",
+        title: "Workplace Safety Training - Module 3",
+        description: "Essential safety protocols and emergency procedures for manufacturing environments. This module covers personal protective equipment, hazard identification, and incident reporting.",
+        thumbnailUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=450",
+        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        duration: "12:34",
+        category: "Safety Training",
       });
 
       res.json({ message: "Video seeded successfully", video });
 
     } catch (error) {
       console.error("Seed error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Seed super admin (for demo purposes - remove in production)
+  app.post("/api/seed-admin", async (req: Request, res: Response) => {
+    try {
+      const existingAdmin = await storage.getAdminUserByEmail("admin@tasksafe.com");
+      if (existingAdmin) {
+        return res.json({ message: "Super admin already exists" });
+      }
+
+      const hashedPassword = await bcrypt.hash("admin123", 12);
+      
+      const admin = await storage.createAdminUser({
+        email: "admin@tasksafe.com",
+        password: hashedPassword,
+        role: "SUPER_ADMIN",
+        companyTag: null,
+      });
+
+      res.json({ 
+        message: "Super admin created successfully",
+        email: admin.email,
+        note: "Use email: admin@tasksafe.com, password: admin123 to login"
+      });
+
+    } catch (error) {
+      console.error("Seed admin error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
