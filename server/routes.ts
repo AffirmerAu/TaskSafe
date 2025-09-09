@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Seed super admin (for demo purposes - remove in production)
   app.post("/api/seed-admin", async (req: Request, res: Response) => {
     try {
-      const existingAdmin = await storage.getAdminUserByEmail("admin@tasksafe.com");
+      const existingAdmin = await storage.getAdminUserByEmail("admin@tasksafe.au");
       if (existingAdmin) {
         return res.json({ message: "Super admin already exists" });
       }
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash("admin123", 12);
       
       const admin = await storage.createAdminUser({
-        email: "admin@tasksafe.com",
+        email: "admin@tasksafe.au",
         password: hashedPassword,
         role: "SUPER_ADMIN",
         companyTag: null,
@@ -483,7 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: "Super admin created successfully",
         email: admin.email,
-        note: "Use email: admin@tasksafe.com, password: admin123 to login"
+        note: "Use email: admin@tasksafe.au, password: admin123 to login"
       });
 
     } catch (error) {
