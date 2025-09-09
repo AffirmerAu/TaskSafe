@@ -123,8 +123,17 @@ export default function VideoPlayer() {
   }, []);
 
   const sendProgressUpdate = useCallback(() => {
-    updateProgressMutation.mutate(progressRef.current);
-  }, [updateProgressMutation]);
+    if (!accessData) return;
+    
+    fetch(`/api/access/${accessData.accessLog.id}/progress`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(progressRef.current),
+    }).catch(() => {
+      // Silently handle errors to avoid restarting the player
+      console.error('Progress update failed');
+    });
+  }, [accessData]);
 
   // Handle YouTube player
   useEffect(() => {
@@ -187,7 +196,7 @@ export default function VideoPlayer() {
         player.destroy();
       }
     };
-  }, [accessData, isYouTubeAPIReady, updateProgress, sendProgressUpdate, updateProgressMutation]);
+  }, [accessData, isYouTubeAPIReady, updateProgress, sendProgressUpdate]);
 
   // Handle regular video events
   useEffect(() => {
