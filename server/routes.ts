@@ -522,7 +522,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (importData.companyTags && importData.companyTags.length > 0) {
         for (const tag of importData.companyTags) {
           try {
-            const existingTag = await storage.getCompanyTagByName(tag.name);
+            const allTags = await storage.getAllCompanyTags();
+            const existingTag = allTags.find(t => t.name === tag.name);
             if (!existingTag) {
               await storage.createCompanyTag({
                 name: tag.name,
@@ -540,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (importData.videos && importData.videos.length > 0) {
         for (const video of importData.videos) {
           try {
-            const existingVideo = await storage.getVideoById(video.id);
+            const existingVideo = await storage.getVideo(video.id);
             if (!existingVideo) {
               await storage.createVideo({
                 title: video.title,
@@ -567,6 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const tempMagicLink = await storage.createMagicLink({
               email: log.email,
               videoId: log.videoId,
+              token: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               expiresAt: new Date(Date.now() - 1000), // Already expired
             });
 
@@ -582,8 +584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               companyTag: log.companyTag || null,
             });
             importCount++;
-          } catch (error) {
-            console.log(`Error importing access log for ${log.email}: ${error.message}`);
+          } catch (error: any) {
+            console.log(`Error importing access log for ${log.email}: ${error?.message || error}`);
           }
         }
       }
@@ -594,9 +596,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         note: "All existing data was preserved, only new records were added"
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Data import error:", error);
-      res.status(500).json({ message: "Data import failed", error: error.message });
+      res.status(500).json({ message: "Data import failed", error: error?.message || error });
     }
   });
 
