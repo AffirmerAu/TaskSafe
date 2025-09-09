@@ -10,11 +10,13 @@ import {
   Users, 
   LogOut,
   PlayCircle,
-  TrendingUp
+  TrendingUp,
+  Tag
 } from "lucide-react";
 import AdminVideos from "@/pages/admin-videos";
 import AdminCompletions from "@/pages/admin-completions";
 import AdminUsers from "@/pages/admin-users";
+import AdminCompanyTags from "@/pages/admin-company-tags";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdmin();
@@ -24,7 +26,8 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
     ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users }
+      { name: "Users", href: "/admin/users", icon: Users },
+      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
     ] : []),
   ];
 
@@ -223,6 +226,9 @@ export default function AdminDashboard() {
         <Route path="/admin/completions" component={AdminCompletions} />
         {adminUser.role === "SUPER_ADMIN" && (
           <Route path="/admin/users" component={AdminUsers} />
+        )}
+        {adminUser.role === "SUPER_ADMIN" && (
+          <Route path="/admin/company-tags" component={AdminCompanyTags} />
         )}
         <Route path="/admin/*" component={AdminDashboardHome} />
       </Switch>
