@@ -164,15 +164,15 @@ function VideoDialog({
               <Label htmlFor="companyTag">Company Tag (Optional)</Label>
               {adminUser?.role === "SUPER_ADMIN" && companyTags.length > 0 ? (
                 <Select
-                  value={formData.companyTag || ""}
-                  onValueChange={(value) => handleChange("companyTag", value)}
+                  value={formData.companyTag || "none"}
+                  onValueChange={(value) => handleChange("companyTag", value === "none" ? "" : value)}
                   data-testid="select-video-company-tag"
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a company tag" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No company tag</SelectItem>
+                    <SelectItem value="none">No company tag</SelectItem>
                     {companyTags.map((tag) => (
                       <SelectItem key={tag.id} value={tag.name}>
                         {tag.name}

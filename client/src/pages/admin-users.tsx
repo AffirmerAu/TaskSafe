@@ -21,7 +21,7 @@ import {
   Mail,
   AlertCircle
 } from "lucide-react";
-import type { AdminUser } from "@shared/schema";
+import type { AdminUser, CompanyTag } from "@shared/schema";
 
 interface UserFormData {
   email: string;
@@ -41,6 +41,10 @@ function UserDialog({
   onClose: () => void; 
   onSave: (data: UserFormData) => void;
 }) {
+  // Fetch company tags for dropdown
+  const { data: companyTags = [] } = useQuery<CompanyTag[]>({
+    queryKey: ["/api/admin/company-tags"],
+  });
   const [formData, setFormData] = useState<UserFormData>({
     email: user?.email || "",
     password: "",
@@ -113,14 +117,35 @@ function UserDialog({
           
           <div className="space-y-2">
             <Label htmlFor="companyTag">Company Tag (for ADMINs)</Label>
-            <Input
-              id="companyTag"
-              value={formData.companyTag}
-              onChange={(e) => handleChange("companyTag", e.target.value)}
-              placeholder="e.g., acme-corp"
-              disabled={formData.role === "SUPER_ADMIN"}
-              data-testid="input-user-company-tag"
-            />
+            {companyTags.length > 0 ? (
+              <Select
+                value={formData.companyTag || "none"}
+                onValueChange={(value) => handleChange("companyTag", value === "none" ? "" : value)}
+                disabled={formData.role === "SUPER_ADMIN"}
+                data-testid="select-user-company-tag"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a company tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No company tag</SelectItem>
+                  {companyTags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.name}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="companyTag"
+                value={formData.companyTag}
+                onChange={(e) => handleChange("companyTag", e.target.value)}
+                placeholder="e.g., acme-corp"
+                disabled={formData.role === "SUPER_ADMIN"}
+                data-testid="input-user-company-tag"
+              />
+            )}
             {formData.role === "ADMIN" && (
               <p className="text-xs text-muted-foreground">
                 Admins will only see videos and completions for this company tag
