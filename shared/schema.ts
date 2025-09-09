@@ -3,6 +3,14 @@ import { pgTable, text, varchar, timestamp, boolean, integer } from "drizzle-orm
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const companyTags = pgTable("company_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -73,6 +81,11 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   }),
 }));
 
+export const insertCompanyTagSchema = createInsertSchema(companyTags).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   id: true,
   createdAt: true,
@@ -117,6 +130,8 @@ export const adminCreateUserSchema = z.object({
   companyTag: z.string().optional(),
 });
 
+export type CompanyTag = typeof companyTags.$inferSelect;
+export type InsertCompanyTag = z.infer<typeof insertCompanyTagSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type Video = typeof videos.$inferSelect;
