@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -24,12 +24,41 @@ interface AccessData {
   token: string;
 }
 
+// YouTube Player API types
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
+// Utility functions for video URL detection
+const getVideoType = (url: string): 'youtube' | 'vimeo' | 'direct' => {
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+  if (url.includes('vimeo.com')) return 'vimeo';
+  return 'direct';
+};
+
+const extractYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
 export default function VideoPlayer() {
   const [, setLocation] = useLocation();
   const [progress, setProgress] = useState({ watchDuration: 0, completionPercentage: 0 });
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
   const progressRef = useRef({ watchDuration: 0, completionPercentage: 0 });
+  const [isYouTubeAPIReady, setIsYouTubeAPIReady] = useState(false);
 
   // Get token from URL params
   const urlParams = new URLSearchParams(window.location.search);
@@ -64,10 +93,108 @@ export default function VideoPlayer() {
     }
   });
 
-  // Handle video events
+  // Load YouTube API
   useEffect(() => {
+    if (!accessData || getVideoType(accessData.video.videoUrl) !== 'youtube') return;
+
+    // Load YouTube API if not already loaded
+    if (!window.YT) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(script);
+
+      window.onYouTubeIframeAPIReady = () => {
+        setIsYouTubeAPIReady(true);
+      };
+    } else {
+      setIsYouTubeAPIReady(true);
+    }
+  }, [accessData]);
+
+  // Progress update functions (shared across all player types)
+  const updateProgress = useCallback((watchDuration: number, completionPercentage: number) => {
+    const newProgress = {
+      watchDuration: Math.round(watchDuration),
+      completionPercentage: Math.max(completionPercentage, progressRef.current.completionPercentage)
+    };
+
+    progressRef.current = newProgress;
+    setProgress(newProgress);
+  }, []);
+
+  const sendProgressUpdate = useCallback(() => {
+    updateProgressMutation.mutate(progressRef.current);
+  }, [updateProgressMutation]);
+
+  // Handle YouTube player
+  useEffect(() => {
+    if (!accessData || !isYouTubeAPIReady || getVideoType(accessData.video.videoUrl) !== 'youtube') return;
+
+    const videoId = extractYouTubeVideoId(accessData.video.videoUrl);
+    if (!videoId) return;
+
+    let progressInterval: NodeJS.Timeout;
+
+    const player = new window.YT.Player('youtube-player', {
+      videoId: videoId,
+      playerVars: {
+        autoplay: 1,
+        mute: 1,
+        controls: 1,
+        rel: 0,
+        modestbranding: 1,
+      },
+      events: {
+        onReady: () => {
+          setIsVideoLoaded(true);
+          youtubePlayerRef.current = player;
+        },
+        onStateChange: (event: any) => {
+          if (event.data === window.YT.PlayerState.PLAYING) {
+            // Start progress tracking
+            progressInterval = setInterval(() => {
+              const currentTime = player.getCurrentTime();
+              const duration = player.getDuration();
+              const completionPercentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+              
+              updateProgress(currentTime, completionPercentage);
+              sendProgressUpdate();
+            }, 5000);
+          } else if (event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
+            // Update progress one final time
+            clearInterval(progressInterval);
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            const completionPercentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+            
+            updateProgress(currentTime, completionPercentage);
+            sendProgressUpdate();
+
+            if (event.data === window.YT.PlayerState.ENDED) {
+              toast({
+                title: "Training Complete! 🎉",
+                description: "You have successfully completed this training module.",
+              });
+            }
+          }
+        },
+      },
+    });
+
+    return () => {
+      clearInterval(progressInterval);
+      if (player && player.destroy) {
+        player.destroy();
+      }
+    };
+  }, [accessData, isYouTubeAPIReady, updateProgress, sendProgressUpdate, updateProgressMutation]);
+
+  // Handle regular video events
+  useEffect(() => {
+    if (!accessData || getVideoType(accessData.video.videoUrl) !== 'direct') return;
+    
     const video = videoRef.current;
-    if (!video || !accessData) return;
+    if (!video) return;
 
     let updateInterval: NodeJS.Timeout;
 
@@ -80,34 +207,27 @@ export default function VideoPlayer() {
       const duration = video.duration;
       const completionPercentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
       
-      const newProgress = {
-        watchDuration: Math.round(currentTime),
-        completionPercentage: Math.max(completionPercentage, progressRef.current.completionPercentage)
-      };
-
-      progressRef.current = newProgress;
-      setProgress(newProgress);
+      updateProgress(currentTime, completionPercentage);
     };
 
     const handlePlay = () => {
       // Update progress every 5 seconds while playing
       updateInterval = setInterval(() => {
-        updateProgressMutation.mutate(progressRef.current);
+        sendProgressUpdate();
       }, 5000);
     };
 
     const handlePause = () => {
       clearInterval(updateInterval);
-      updateProgressMutation.mutate(progressRef.current);
+      sendProgressUpdate();
     };
 
     const handleEnded = () => {
       clearInterval(updateInterval);
-      const finalProgress = { ...progressRef.current, completionPercentage: 100 };
-      updateProgressMutation.mutate(finalProgress);
+      sendProgressUpdate();
       
       toast({
-        title: "Training Complete",
+        title: "Training Complete! 🎉",
         description: "You have successfully completed this training module.",
       });
     };
@@ -126,7 +246,7 @@ export default function VideoPlayer() {
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [accessData, updateProgressMutation]);
+  }, [accessData, updateProgress, sendProgressUpdate]);
 
   // Redirect if no token
   useEffect(() => {
@@ -182,7 +302,13 @@ export default function VideoPlayer() {
             <CardContent className="p-0">
               <div className="relative">
                 <div className="relative bg-black aspect-video">
-                  {video.videoUrl.includes('vimeo.com') ? (
+                  {getVideoType(video.videoUrl) === 'youtube' ? (
+                    <div
+                      id="youtube-player"
+                      className="w-full h-full"
+                      data-testid="video-player"
+                    />
+                  ) : getVideoType(video.videoUrl) === 'vimeo' ? (
                     <iframe
                       src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=1&player_id=0&app_id=58479`}
                       className="w-full h-full"
