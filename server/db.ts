@@ -5,14 +5,17 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Use NEON_DATABASE_URL for production
-const databaseUrl = process.env.NEON_DATABASE_URL;
+// Use NEON_DATABASE_URL if available, fallback to DATABASE_URL for compatibility
+const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   throw new Error(
     "NEON_DATABASE_URL or DATABASE_URL must be set. Did you forget to provision a database?",
   );
 }
+
+// Log which database we're connecting to (for debugging)
+console.log(`🔗 Connecting to database: ${databaseUrl.includes('neon.tech') ? 'Neon' : 'Replit'} database`);
 
 export const pool = new Pool({ connectionString: databaseUrl });
 export const db = drizzle({ client: pool, schema });
