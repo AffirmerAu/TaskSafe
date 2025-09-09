@@ -21,7 +21,8 @@ import {
   Calendar,
   Tag
 } from "lucide-react";
-import type { Video, InsertVideo } from "@shared/schema";
+import type { Video, InsertVideo, CompanyTag } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QRCode from "qrcode";
 
 interface VideoFormData {
@@ -45,6 +46,13 @@ function VideoDialog({
   onClose: () => void; 
   onSave: (data: VideoFormData) => void;
 }) {
+  const { adminUser } = useAdmin();
+  
+  // Fetch company tags if user is super admin
+  const { data: companyTags = [] } = useQuery<CompanyTag[]>({
+    queryKey: ["/api/admin/company-tags"],
+    enabled: adminUser?.role === "SUPER_ADMIN",
+  });
   const [formData, setFormData] = useState<VideoFormData>({
     title: video?.title || "",
     description: video?.description || "",
@@ -154,13 +162,33 @@ function VideoDialog({
             
             <div className="space-y-2">
               <Label htmlFor="companyTag">Company Tag (Optional)</Label>
-              <Input
-                id="companyTag"
-                value={formData.companyTag}
-                onChange={(e) => handleChange("companyTag", e.target.value)}
-                placeholder="e.g., acme-corp"
-                data-testid="input-video-company-tag"
-              />
+              {adminUser?.role === "SUPER_ADMIN" && companyTags.length > 0 ? (
+                <Select
+                  value={formData.companyTag || ""}
+                  onValueChange={(value) => handleChange("companyTag", value)}
+                  data-testid="select-video-company-tag"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a company tag" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No company tag</SelectItem>
+                    {companyTags.map((tag) => (
+                      <SelectItem key={tag.id} value={tag.name}>
+                        {tag.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="companyTag"
+                  value={formData.companyTag}
+                  onChange={(e) => handleChange("companyTag", e.target.value)}
+                  placeholder="e.g., acme-corp"
+                  data-testid="input-video-company-tag"
+                />
+              )}
             </div>
           </div>
 
