@@ -161,6 +161,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual video by ID (public endpoint for share URLs)
+  app.get("/api/videos/:videoId", async (req: Request, res: Response) => {
+    try {
+      const { videoId } = req.params;
+
+      const video = await storage.getVideo(videoId);
+      if (!video || !video.isActive) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+
+      // Return basic video info (excluding sensitive data)
+      const publicVideoData = {
+        id: video.id,
+        title: video.title,
+        description: video.description,
+        thumbnailUrl: video.thumbnailUrl,
+        duration: video.duration,
+        category: video.category
+      };
+
+      res.json(publicVideoData);
+
+    } catch (error) {
+      console.error("Get video error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // ===== ADMIN ROUTES =====
   
   // Admin login

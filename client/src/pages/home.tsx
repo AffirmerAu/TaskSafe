@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import VideoThumbnail from "@/components/video-thumbnail";
@@ -19,16 +19,35 @@ interface Video {
 export default function Home() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [videoId, setVideoId] = useState<string | null>(null);
   const emailFormRef = useRef<HTMLDivElement>(null);
 
-  // Fetch the active video
+  // Get video ID from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoParam = urlParams.get('video');
+    setVideoId(videoParam);
+  }, []);
+
+  // Fetch specific video if video ID is provided, otherwise fetch default video
   const { data: video, isLoading } = useQuery<Video>({
-    queryKey: ["/api/seed"],
+    queryKey: videoId ? ["/api/videos", videoId] : ["/api/seed"],
     queryFn: async () => {
-      const response = await fetch("/api/seed", { method: "POST" });
-      const data = await response.json();
-      return data.video;
+      if (videoId) {
+        // Fetch specific video by ID
+        const response = await fetch(`/api/videos/${videoId}`);
+        if (!response.ok) {
+          throw new Error('Video not found');
+        }
+        return response.json();
+      } else {
+        // Fetch default seeded video
+        const response = await fetch("/api/seed", { method: "POST" });
+        const data = await response.json();
+        return data.video;
+      }
     },
+    retry: false,
   });
 
   const handleEmailSent = (email: string) => {
