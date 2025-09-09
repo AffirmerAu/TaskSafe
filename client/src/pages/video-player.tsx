@@ -336,7 +336,7 @@ export default function VideoPlayer() {
                       muted
                       playsInline
                       preload="metadata"
-                      poster={video.thumbnailUrl || ""}
+                      poster=""
                       data-testid="video-player"
                       onLoadedMetadata={() => setIsVideoLoaded(true)}
                     >
