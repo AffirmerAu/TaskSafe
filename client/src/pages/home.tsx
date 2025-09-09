@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import VideoThumbnail from "@/components/video-thumbnail";
@@ -19,6 +19,7 @@ interface Video {
 export default function Home() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const emailFormRef = useRef<HTMLDivElement>(null);
 
   // Fetch the active video
   const { data: video, isLoading } = useQuery<Video>({
@@ -33,6 +34,13 @@ export default function Home() {
   const handleEmailSent = (email: string) => {
     setUserEmail(email);
     setShowEmailModal(true);
+  };
+
+  const scrollToEmailForm = () => {
+    emailFormRef.current?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'center'
+    });
   };
 
   if (isLoading) {
@@ -85,7 +93,7 @@ export default function Home() {
           {/* Video Section - Moved to Top */}
           <div className="mb-12">
             <div className="max-w-2xl mx-auto">
-              <VideoThumbnail video={video} />
+              <VideoThumbnail video={video} onClick={scrollToEmailForm} />
               
               {/* Video Details */}
               <div className="mt-6 text-center">
@@ -110,7 +118,7 @@ export default function Home() {
           </div>
 
           {/* Email Access Form - Centered */}
-          <div className="max-w-md mx-auto">
+          <div className="max-w-md mx-auto" ref={emailFormRef}>
             <EmailForm onEmailSent={handleEmailSent} video={video} />
           </div>
         </div>
