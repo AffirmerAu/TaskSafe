@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/admin-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -274,10 +274,7 @@ export default function AdminVideos() {
 
   // Create video mutation
   const createVideoMutation = useMutation({
-    mutationFn: (data: VideoFormData) => apiRequest("/api/admin/videos", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: VideoFormData) => apiRequest("POST", "/api/admin/videos", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       setIsVideoDialogOpen(false);
@@ -298,10 +295,7 @@ export default function AdminVideos() {
   // Update video mutation
   const updateVideoMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: VideoFormData }) => 
-      apiRequest(`/api/admin/videos/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+      apiRequest("PATCH", `/api/admin/videos/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       setIsVideoDialogOpen(false);
@@ -322,9 +316,7 @@ export default function AdminVideos() {
 
   // Delete video mutation
   const deleteVideoMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/videos/${id}`, {
-      method: "DELETE",
-    }),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/videos/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       toast({

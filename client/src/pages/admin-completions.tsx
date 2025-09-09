@@ -63,7 +63,7 @@ export default function AdminCompletions() {
   });
 
   // Fetch videos for filter dropdown
-  const { data: videos = [] } = useQuery({
+  const { data: videos = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/videos"],
   });
 

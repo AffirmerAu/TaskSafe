@@ -218,6 +218,7 @@ export default function AdminDashboard() {
         {adminUser.role === "SUPER_ADMIN" && (
           <Route path="/admin/users" component={AdminUsers} />
         )}
+        <Route component={() => <AdminDashboardHome />} />
       </Switch>
     </AdminLayout>
   );
