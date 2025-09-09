@@ -5,8 +5,8 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Temporarily connect to Replit database to export data
-const databaseUrl = process.env.DATABASE_URL;
+// Use NEON_DATABASE_URL for production
+const databaseUrl = process.env.NEON_DATABASE_URL;
 
 if (!databaseUrl) {
   throw new Error(
