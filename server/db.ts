@@ -5,8 +5,8 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Temporarily use DATABASE_URL (Replit database) for data export
-const databaseUrl = process.env.DATABASE_URL;
+// Use NEON_DATABASE_URL if available, fallback to DATABASE_URL for compatibility
+const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   throw new Error(
