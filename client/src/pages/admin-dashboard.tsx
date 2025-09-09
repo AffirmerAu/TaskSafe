@@ -12,9 +12,9 @@ import {
   PlayCircle,
   TrendingUp
 } from "lucide-react";
-import AdminVideos from "./admin-videos";
-import AdminCompletions from "./admin-completions";
-import AdminUsers from "./admin-users";
+import AdminVideos from "@/pages/admin-videos";
+import AdminCompletions from "@/pages/admin-completions";
+import AdminUsers from "@/pages/admin-users";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdmin();
