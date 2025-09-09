@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import VideoThumbnail from "@/components/video-thumbnail";
 import EmailForm from "@/components/email-form";
 import EmailSentModal from "@/components/email-sent-modal";
-import { Shield, Lock, CheckCircle, GraduationCap, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Shield, Lock, CheckCircle, GraduationCap, Tag, LogIn } from "lucide-react";
 
 interface Video {
   id: string;
@@ -144,6 +146,12 @@ function Header() {
               <Lock className="h-3 w-3" />
               <span>Secure Access</span>
             </div>
+            <Link href="/admin/login">
+              <Button variant="outline" size="sm" data-testid="button-admin-login">
+                <LogIn className="h-4 w-4 mr-2" />
+                Admin Login
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
