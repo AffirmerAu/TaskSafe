@@ -206,7 +206,13 @@ export default function AdminDashboard() {
   }
 
   if (!adminUser) {
-    return null;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -218,7 +224,7 @@ export default function AdminDashboard() {
         {adminUser.role === "SUPER_ADMIN" && (
           <Route path="/admin/users" component={AdminUsers} />
         )}
-        <Route component={() => <AdminDashboardHome />} />
+        <Route path="/admin/*" component={AdminDashboardHome} />
       </Switch>
     </AdminLayout>
   );
