@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { sendEmail, generateMagicLinkEmail } from "./services/email";
-import { requestAccessSchema, updateProgressSchema, adminLoginSchema, adminCreateUserSchema, insertVideoSchema } from "@shared/schema";
+import { requestAccessSchema, updateProgressSchema, adminLoginSchema, adminCreateUserSchema, insertVideoSchema, insertCompanyTagSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import type { AdminUser } from "@shared/schema";
@@ -382,6 +382,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Delete admin user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get all company tags (super admin only)
+  app.get("/api/admin/company-tags", requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const companyTags = await storage.getAllCompanyTags();
+      res.json(companyTags);
+
+    } catch (error) {
+      console.error("Get company tags error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Create company tag (super admin only)
+  app.post("/api/admin/company-tags", requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const companyTagData = insertCompanyTagSchema.parse(req.body);
+      const companyTag = await storage.createCompanyTag(companyTagData);
+      res.json(companyTag);
+
+    } catch (error) {
+      console.error("Create company tag error:", error);
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Update company tag (super admin only)
+  app.patch("/api/admin/company-tags/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updates = insertCompanyTagSchema.partial().parse(req.body);
+      const companyTag = await storage.updateCompanyTag(id, updates);
+      res.json(companyTag);
+
+    } catch (error) {
+      console.error("Update company tag error:", error);
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Delete company tag (super admin only)
+  app.delete("/api/admin/company-tags/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyTag(id);
+      res.json({ message: "Company tag deleted successfully" });
+
+    } catch (error) {
+      console.error("Delete company tag error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
