@@ -492,6 +492,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Data import endpoint for transferring data to deployed database
+  app.post("/api/import-data", async (req: Request, res: Response) => {
+    try {
+      const importData = req.body;
+      let importCount = 0;
+
+      // Import admin users
+      if (importData.adminUsers && importData.adminUsers.length > 0) {
+        for (const user of importData.adminUsers) {
+          try {
+            const existingUser = await storage.getAdminUserByEmail(user.email);
+            if (!existingUser) {
+              await storage.createAdminUser({
+                email: user.email,
+                password: user.password, // Already hashed
+                role: user.role,
+                companyTag: user.companyTag || null,
+              });
+              importCount++;
+            }
+          } catch (error) {
+            console.log(`Skipping existing admin user: ${user.email}`);
+          }
+        }
+      }
+
+      // Import company tags
+      if (importData.companyTags && importData.companyTags.length > 0) {
+        for (const tag of importData.companyTags) {
+          try {
+            const existingTag = await storage.getCompanyTagByName(tag.name);
+            if (!existingTag) {
+              await storage.createCompanyTag({
+                name: tag.name,
+                description: tag.description || null,
+              });
+              importCount++;
+            }
+          } catch (error) {
+            console.log(`Skipping existing company tag: ${tag.name}`);
+          }
+        }
+      }
+
+      // Import videos
+      if (importData.videos && importData.videos.length > 0) {
+        for (const video of importData.videos) {
+          try {
+            const existingVideo = await storage.getVideoById(video.id);
+            if (!existingVideo) {
+              await storage.createVideo({
+                title: video.title,
+                description: video.description,
+                thumbnailUrl: video.thumbnailUrl,
+                videoUrl: video.videoUrl,
+                duration: video.duration,
+                category: video.category,
+                companyTag: video.companyTag || null,
+              });
+              importCount++;
+            }
+          } catch (error) {
+            console.log(`Skipping existing video: ${video.title}`);
+          }
+        }
+      }
+
+      // Import access logs (completions)
+      if (importData.accessLogs && importData.accessLogs.length > 0) {
+        for (const log of importData.accessLogs) {
+          try {
+            // Create a temporary magic link first (needed for foreign key)
+            const tempMagicLink = await storage.createMagicLink({
+              email: log.email,
+              videoId: log.videoId,
+              expiresAt: new Date(Date.now() - 1000), // Already expired
+            });
+
+            // Create the access log
+            await storage.createAccessLog({
+              magicLinkId: tempMagicLink.id,
+              email: log.email,
+              videoId: log.videoId,
+              watchDuration: log.watchDuration || 0,
+              completionPercentage: log.completionPercentage || 0,
+              ipAddress: log.ipAddress || "0.0.0.0",
+              userAgent: log.userAgent || "Imported",
+              companyTag: log.companyTag || null,
+            });
+            importCount++;
+          } catch (error) {
+            console.log(`Error importing access log for ${log.email}: ${error.message}`);
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Data import completed successfully`,
+        imported: importCount,
+        note: "All existing data was preserved, only new records were added"
+      });
+
+    } catch (error) {
+      console.error("Data import error:", error);
+      res.status(500).json({ message: "Data import failed", error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
