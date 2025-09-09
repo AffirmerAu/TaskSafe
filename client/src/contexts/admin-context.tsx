@@ -21,7 +21,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/admin/me");
+      const response = await fetch("/api/admin/me", {
+        credentials: 'include'
+      });
       if (response.ok) {
         const admin = await response.json();
         setAdminUser(admin);
@@ -41,6 +43,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -57,7 +60,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/admin/logout", { method: "POST" });
+      await fetch("/api/admin/logout", { 
+        method: "POST",
+        credentials: 'include'
+      });
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
