@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
-import { Shield, Eye, Clock, Play, CheckCircle, BarChart3, Pause, Volume2 } from "lucide-react";
+import { Shield, Eye, Clock, Play, CheckCircle, BarChart3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -150,7 +150,7 @@ export default function VideoPlayer() {
       playerVars: {
         autoplay: 1,
         mute: 0,
-        controls: 1,
+        controls: 0,
         rel: 0,
         modestbranding: 1,
         disablekb: 1,
@@ -322,7 +322,7 @@ export default function VideoPlayer() {
                     />
                   ) : getVideoType(video.videoUrl) === 'vimeo' ? (
                     <iframe
-                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=0&player_id=0&app_id=58479`}
+                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=0&controls=0&player_id=0&app_id=58479`}
                       className="w-full h-full"
                       frameBorder="0"
                       allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
@@ -340,7 +340,7 @@ export default function VideoPlayer() {
                       poster=""
                       data-testid="video-player"
                       onLoadedMetadata={() => setIsVideoLoaded(true)}
-                      controlsList="nodownload nofullscreen noremoteplayback"
+                      controls={false}
                       onSeeking={(e) => {
                         const video = e.target as HTMLVideoElement;
                         const currentProgress = progressRef.current.completionPercentage;
@@ -357,80 +357,6 @@ export default function VideoPlayer() {
                     </video>
                   )}
                   
-                  {/* Custom Video Controls Overlay for Direct Videos */}
-                  {getVideoType(video.videoUrl) === 'direct' && (
-                    <div className="absolute inset-0 group">
-                      {/* Play/Pause Button */}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                           onClick={() => {
-                             const videoEl = videoRef.current;
-                             if (videoEl) {
-                               if (videoEl.paused) {
-                                 videoEl.play();
-                               } else {
-                                 videoEl.pause();
-                               }
-                             }
-                           }}>
-                        <div className="bg-black/80 rounded-full p-4">
-                          {isPlaying ? (
-                            <Pause className="h-8 w-8 text-white" />
-                          ) : (
-                            <Play className="h-8 w-8 text-white" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Bottom Controls Bar */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex items-center space-x-4">
-                          {/* Play/Pause Button */}
-                          <button
-                            onClick={() => {
-                              const videoEl = videoRef.current;
-                              if (videoEl) {
-                                if (videoEl.paused) {
-                                  videoEl.play();
-                                } else {
-                                  videoEl.pause();
-                                }
-                              }
-                            }}
-                            className="text-white hover:text-blue-400 transition-colors"
-                          >
-                            {isPlaying ? (
-                              <Pause className="h-5 w-5" />
-                            ) : (
-                              <Play className="h-5 w-5" />
-                            )}
-                          </button>
-                          
-                          {/* Volume Button */}
-                          <button
-                            onClick={() => {
-                              const videoEl = videoRef.current;
-                              if (videoEl) {
-                                videoEl.muted = !videoEl.muted;
-                              }
-                            }}
-                            className="text-white hover:text-blue-400 transition-colors"
-                          >
-                            <Volume2 className="h-5 w-5" />
-                          </button>
-                          
-                          {/* Progress Bar (display only) */}
-                          <div className="flex-1 mx-4">
-                            <div className="bg-gray-600 h-1 rounded-full relative">
-                              <div 
-                                className="bg-blue-500 h-1 rounded-full" 
-                                style={{ width: `${progress.completionPercentage}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   {!isVideoLoaded && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
