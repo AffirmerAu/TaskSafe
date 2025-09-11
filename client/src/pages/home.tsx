@@ -5,7 +5,7 @@ import VideoThumbnail from "@/components/video-thumbnail";
 import EmailForm from "@/components/email-form";
 import EmailSentModal from "@/components/email-sent-modal";
 import { Button } from "@/components/ui/button";
-import { Shield, Lock, CheckCircle, GraduationCap, Tag, LogIn } from "lucide-react";
+import { Shield, Lock, CheckCircle, LogIn } from "lucide-react";
 
 interface Video {
   id: string;
@@ -118,16 +118,6 @@ export default function Home() {
                 <p className="text-muted-foreground mb-4" data-testid="text-video-description">
                   {video.description}
                 </p>
-                <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
-                  <div className="flex items-center space-x-1">
-                    <GraduationCap className="h-4 w-4" />
-                    <span>Training Required</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Tag className="h-4 w-4" />
-                    <span>Certification Available</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
