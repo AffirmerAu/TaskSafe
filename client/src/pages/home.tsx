@@ -22,31 +22,27 @@ export default function Home() {
   const [videoId, setVideoId] = useState<string | null>(null);
   const emailFormRef = useRef<HTMLDivElement>(null);
 
-  // Get video ID from URL parameters
+  // Get video ID from URL parameters, default to specific video if none provided
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const videoParam = urlParams.get('video');
-    setVideoId(videoParam);
+    // Set default video ID if no video parameter is provided
+    setVideoId(videoParam || '0f7e5417-33c0-4764-a8fb-4a49a193861c');
   }, []);
 
-  // Fetch specific video if video ID is provided, otherwise fetch default video
+  // Fetch specific video by ID
   const { data: video, isLoading } = useQuery<Video>({
-    queryKey: videoId ? ["/api/videos", videoId] : ["/api/seed"],
+    queryKey: ["/api/videos", videoId],
     queryFn: async () => {
-      if (videoId) {
-        // Fetch specific video by ID
-        const response = await fetch(`/api/videos/${videoId}`);
-        if (!response.ok) {
-          throw new Error('Video not found');
-        }
-        return response.json();
-      } else {
-        // Fetch default seeded video
-        const response = await fetch("/api/seed", { method: "POST" });
-        const data = await response.json();
-        return data.video;
+      if (!videoId) return null;
+      // Fetch specific video by ID
+      const response = await fetch(`/api/videos/${videoId}`);
+      if (!response.ok) {
+        throw new Error('Video not found');
       }
+      return response.json();
     },
+    enabled: !!videoId,
     retry: false,
   });
 
