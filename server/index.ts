@@ -3,6 +3,30 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Validate required environment variables for production
+function validateEnvironment() {
+  const requiredEnvVars = [];
+  
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === "tasksafe-admin-secret-key-change-in-production") {
+      requiredEnvVars.push("SESSION_SECRET must be set to a secure value in production");
+    }
+    
+    if (!process.env.DATABASE_URL) {
+      requiredEnvVars.push("DATABASE_URL is required for database connection");
+    }
+  }
+  
+  if (requiredEnvVars.length > 0) {
+    console.error("❌ Missing required environment variables:");
+    requiredEnvVars.forEach(error => console.error(`   - ${error}`));
+    process.exit(1);
+  }
+}
+
+// Validate environment before starting the application
+validateEnvironment();
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -74,10 +98,25 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
+  
+  // Validate port number
+  if (isNaN(port) || port < 1 || port > 65535) {
+    console.error(`❌ Invalid PORT environment variable: ${process.env.PORT}. Must be a number between 1 and 65535.`);
+    process.exit(1);
+  }
+  
   server.listen({
     port,
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
+  }).on('error', (error: any) => {
+    console.error(`❌ Failed to start server on port ${port}:`, error.message);
+    if (error.code === 'EADDRINUSE') {
+      console.error(`   Port ${port} is already in use. Please set a different PORT environment variable.`);
+    } else if (error.code === 'EACCES') {
+      console.error(`   Permission denied to bind to port ${port}. Try using a port number above 1024.`);
+    }
+    process.exit(1);
   });
 })();
