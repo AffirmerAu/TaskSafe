@@ -193,6 +193,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== ADMIN ROUTES =====
+
+  // Debug endpoint (temporary) - to diagnose deployment database connection
+  app.get("/api/_debug/db", async (req: Request, res: Response) => {
+    try {
+      const videos = await storage.getAllVideos();
+      const users = await storage.getAllAdminUsers();
+      const hostname = process.env.NEON_DATABASE_URL?.match(/@([^/]+)/)?.[1] || 'unknown';
+      
+      res.json({
+        database: 'Neon PostgreSQL',
+        hostname: hostname,
+        environment: process.env.NODE_ENV || 'unknown',
+        tables: {
+          videos: videos.length,
+          adminUsers: users.length
+        }
+      });
+    } catch (error) {
+      console.error("Database debug error:", error);
+      res.status(500).json({ error: 'Database check failed', message: error });
+    }
+  });
   
   // Admin login
   app.post("/api/admin/login", async (req: Request, res: Response) => {
