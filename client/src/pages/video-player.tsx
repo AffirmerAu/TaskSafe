@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
-import { Shield, Eye, Clock, Play, CheckCircle, BarChart3 } from "lucide-react";
+import { Shield, Eye, Clock, Play, CheckCircle, BarChart3, Volume2, VolumeX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -56,10 +56,23 @@ export default function VideoPlayer() {
   const [progress, setProgress] = useState({ watchDuration: 0, completionPercentage: 0 });
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showMobilePlayButton, setShowMobilePlayButton] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const youtubePlayerRef = useRef<any>(null);
   const progressRef = useRef({ watchDuration: 0, completionPercentage: 0 });
   const [isYouTubeAPIReady, setIsYouTubeAPIReady] = useState(false);
+  
+  // Mobile device detection - using multiple methods for better detection
+  const isMobile = () => {
+    const userAgent = navigator.userAgent;
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth <= 768;
+    return isMobileUA || (isTouchDevice && isSmallScreen);
+  };
+  
+  const isMobileDevice = isMobile();
 
   // Get token from URL params
   const urlParams = new URLSearchParams(window.location.search);
@@ -149,7 +162,7 @@ export default function VideoPlayer() {
       videoId: videoId,
       playerVars: {
         autoplay: 1,
-        mute: 0,
+        mute: isMobileDevice ? 1 : 0,
         controls: 0,
         rel: 0,
         modestbranding: 1,
@@ -160,6 +173,10 @@ export default function VideoPlayer() {
         onReady: () => {
           setIsVideoLoaded(true);
           youtubePlayerRef.current = player;
+          setIsMuted(isMobileDevice);
+          if (isMobileDevice) {
+            setShowMobilePlayButton(true);
+          }
         },
         onStateChange: (event: any) => {
           if (event.data === window.YT.PlayerState.PLAYING) {
@@ -322,7 +339,7 @@ export default function VideoPlayer() {
                     />
                   ) : getVideoType(video.videoUrl) === 'vimeo' ? (
                     <iframe
-                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=0&controls=0&player_id=0&app_id=58479`}
+                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=${isMobileDevice ? 1 : 0}&controls=0&player_id=0&app_id=58479`}
                       className="w-full h-full"
                       frameBorder="0"
                       allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
@@ -335,11 +352,18 @@ export default function VideoPlayer() {
                       ref={videoRef}
                       className="w-full h-full"
                       autoPlay
+                      muted={isMobileDevice}
                       playsInline
                       preload="metadata"
                       poster=""
                       data-testid="video-player"
-                      onLoadedMetadata={() => setIsVideoLoaded(true)}
+                      onLoadedMetadata={() => {
+                        setIsVideoLoaded(true);
+                        setIsMuted(isMobileDevice);
+                        if (isMobileDevice) {
+                          setShowMobilePlayButton(true);
+                        }
+                      }}
                       controls={false}
                       onSeeking={(e) => {
                         const video = e.target as HTMLVideoElement;
@@ -349,7 +373,12 @@ export default function VideoPlayer() {
                           video.currentTime = maxTime;
                         }
                       }}
-                      onPlay={() => setIsPlaying(true)}
+                      onPlay={() => {
+                        setIsPlaying(true);
+                        if (isMobileDevice && videoRef.current && !videoRef.current.muted) {
+                          setShowMobilePlayButton(false);
+                        }
+                      }}
                       onPause={() => setIsPlaying(false)}
                     >
                       <source src={video.videoUrl} type="video/mp4" />
@@ -357,6 +386,49 @@ export default function VideoPlayer() {
                     </video>
                   )}
                   
+                  {/* Mobile Play/Unmute Overlay */}
+                  {(showMobilePlayButton && isMobileDevice) && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                      <div 
+                        className="bg-white/90 rounded-full p-6 cursor-pointer hover:bg-white transition-colors"
+                        onClick={async () => {
+                          if (getVideoType(video.videoUrl) === 'youtube' && youtubePlayerRef.current) {
+                            youtubePlayerRef.current.unMute();
+                            youtubePlayerRef.current.playVideo();
+                            setIsMuted(false);
+                            setShowMobilePlayButton(false);
+                          } else if (getVideoType(video.videoUrl) === 'direct' && videoRef.current) {
+                            videoRef.current.muted = false;
+                            try {
+                              await videoRef.current.play();
+                              setIsMuted(false);
+                              setShowMobilePlayButton(false);
+                            } catch (error) {
+                              console.error('Play failed:', error);
+                            }
+                          } else if (getVideoType(video.videoUrl) === 'vimeo') {
+                            // For Vimeo, we need to reload with muted=0
+                            const iframe = document.querySelector('iframe');
+                            if (iframe) {
+                              const currentSrc = iframe.src;
+                              iframe.src = currentSrc.replace('muted=1', 'muted=0');
+                              setIsMuted(false);
+                              setShowMobilePlayButton(false);
+                            }
+                          }
+                        }}
+                        data-testid="button-mobile-play"
+                      >
+                        <div className="text-center">
+                          <div className="flex items-center justify-center mb-2">
+                            <Play className="h-12 w-12 text-gray-800 mr-2" />
+                            <Volume2 className="h-8 w-8 text-gray-800" />
+                          </div>
+                          <p className="text-sm text-gray-800 font-medium">Tap to play with sound</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   {!isVideoLoaded && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
