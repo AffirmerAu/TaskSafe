@@ -14,7 +14,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AdminLogin} />
+      <Route path="/" component={Home} />
       <Route path="/home" component={Home} />
       <Route path="/access" component={VideoPlayer} />
       <Route path="/access-denied" component={AccessDenied} />
