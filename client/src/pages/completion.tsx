@@ -24,7 +24,7 @@ function Completion() {
 
   // Fetch access log details including video title and completion data
   const { data: accessLogData, isLoading, error } = useQuery<AccessLogData>({
-    queryKey: ['/api/access-logs', accessId],
+    queryKey: [`/api/access-logs/${accessId}`],
     enabled: !!accessId,
   });
 
