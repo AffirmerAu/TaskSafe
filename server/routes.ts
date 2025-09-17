@@ -182,6 +182,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all videos (public endpoint for video selection)
+  app.get("/api/videos", async (req: Request, res: Response) => {
+    try {
+      const videos = await storage.getAllVideos();
+      
+      // Return only active videos with basic info (excluding sensitive data)
+      const publicVideosData = videos
+        .filter(video => video.isActive)
+        .map(video => ({
+          id: video.id,
+          title: video.title,
+          description: video.description,
+          thumbnailUrl: video.thumbnailUrl,
+          duration: video.duration,
+          category: video.category
+        }));
+
+      res.json(publicVideosData);
+
+    } catch (error) {
+      console.error("Get videos error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Get individual video by ID (public endpoint for share URLs)
   app.get("/api/videos/:videoId", async (req: Request, res: Response) => {
     try {
