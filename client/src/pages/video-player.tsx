@@ -339,7 +339,7 @@ export default function VideoPlayer() {
                     />
                   ) : getVideoType(video.videoUrl) === 'vimeo' ? (
                     <iframe
-                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=${isMobileDevice ? 1 : 0}&controls=0&player_id=0&app_id=58479`}
+                      src={`https://player.vimeo.com/video/${video.videoUrl.split('/')[3]}?h=${video.videoUrl.split('/')[4]}&badge=0&autopause=0&autoplay=1&muted=0&controls=0&player_id=0&app_id=58479`}
                       className="w-full h-full"
                       frameBorder="0"
                       allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
@@ -352,17 +352,14 @@ export default function VideoPlayer() {
                       ref={videoRef}
                       className="w-full h-full"
                       autoPlay
-                      muted={isMobileDevice}
+                      muted={false}
                       playsInline
                       preload="metadata"
                       poster=""
                       data-testid="video-player"
                       onLoadedMetadata={() => {
                         setIsVideoLoaded(true);
-                        setIsMuted(isMobileDevice);
-                        if (isMobileDevice) {
-                          setShowMobilePlayButton(true);
-                        }
+                        setIsMuted(false);
                       }}
                       controls={false}
                       onSeeking={(e) => {
@@ -386,49 +383,6 @@ export default function VideoPlayer() {
                     </video>
                   )}
                   
-                  {/* Mobile Play/Unmute Overlay */}
-                  {(showMobilePlayButton && isMobileDevice) && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-                      <div 
-                        className="bg-white/90 rounded-full p-6 cursor-pointer hover:bg-white transition-colors"
-                        onClick={async () => {
-                          if (getVideoType(video.videoUrl) === 'youtube' && youtubePlayerRef.current) {
-                            youtubePlayerRef.current.unMute();
-                            youtubePlayerRef.current.playVideo();
-                            setIsMuted(false);
-                            setShowMobilePlayButton(false);
-                          } else if (getVideoType(video.videoUrl) === 'direct' && videoRef.current) {
-                            videoRef.current.muted = false;
-                            try {
-                              await videoRef.current.play();
-                              setIsMuted(false);
-                              setShowMobilePlayButton(false);
-                            } catch (error) {
-                              console.error('Play failed:', error);
-                            }
-                          } else if (getVideoType(video.videoUrl) === 'vimeo') {
-                            // For Vimeo, we need to reload with muted=0
-                            const iframe = document.querySelector('iframe');
-                            if (iframe) {
-                              const currentSrc = iframe.src;
-                              iframe.src = currentSrc.replace('muted=1', 'muted=0');
-                              setIsMuted(false);
-                              setShowMobilePlayButton(false);
-                            }
-                          }
-                        }}
-                        data-testid="button-mobile-play"
-                      >
-                        <div className="text-center">
-                          <div className="flex items-center justify-center mb-2">
-                            <Play className="h-12 w-12 text-gray-800 mr-2" />
-                            <Volume2 className="h-8 w-8 text-gray-800" />
-                          </div>
-                          <p className="text-sm text-gray-800 font-medium">Tap to play with sound</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   {!isVideoLoaded && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
