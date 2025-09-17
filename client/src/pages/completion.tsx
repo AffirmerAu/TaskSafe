@@ -37,7 +37,7 @@ function Completion() {
   const videoDuration = accessLogData?.videoDuration || 'N/A';
   const videoCategory = accessLogData?.videoCategory || 'N/A';
   const viewerEmail = accessLogData?.email || '';
-  const viewerName = viewerEmail ? viewerEmail.substring(0, viewerEmail.indexOf('@')) + '...' : 'Unknown';
+  const viewerName = viewerEmail ? viewerEmail.substring(0, viewerEmail.indexOf('@')) : 'Unknown';
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -206,46 +206,34 @@ function Completion() {
 
           {/* Video Metadata */}
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Duration</span>
-                </div>
-                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-duration">
-                  {videoDuration}
-                </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Award className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</span>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Tag className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</span>
-                </div>
-                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-category">
-                  {videoCategory}
-                </span>
+              <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-title">
+                {videoName}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Tag className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</span>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Play className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Access Time</span>
-                </div>
-                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-access-time">
-                  {accessedAt}
-                </span>
+              <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-category">
+                {videoCategory}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Viewer</span>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Viewer</span>
-                </div>
-                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-viewer-email">
-                  {viewerName}
-                </span>
-              </div>
+              <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-viewer-email">
+                {viewerName}
+              </span>
             </div>
           </div>
 
