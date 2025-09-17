@@ -97,12 +97,34 @@ function Completion() {
     );
   }
 
-  if (error || !accessLogData) {
+  if (error) {
+    console.error("Completion page error:", error);
     return (
       <div className="min-h-screen bg-gradient-to-b from-red-50 to-white dark:from-red-950 dark:to-gray-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto text-center shadow-xl">
           <CardContent className="p-8">
             <p className="text-red-600 dark:text-red-400">Unable to load completion details.</p>
+            <p className="text-sm text-gray-500 mt-2">Error: {error?.message || 'Unknown error'}</p>
+            <Button
+              onClick={handleBackToHome}
+              variant="outline"
+              className="mt-4"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!accessLogData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-red-50 to-white dark:from-red-950 dark:to-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md mx-auto text-center shadow-xl">
+          <CardContent className="p-8">
+            <p className="text-red-600 dark:text-red-400">No completion data found.</p>
             <Button
               onClick={handleBackToHome}
               variant="outline"
