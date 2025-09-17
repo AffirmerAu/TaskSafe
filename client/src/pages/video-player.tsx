@@ -200,10 +200,10 @@ export default function VideoPlayer() {
             sendProgressUpdate();
 
             if (event.data === window.YT.PlayerState.ENDED) {
-              toast({
-                title: "Training Complete! 🎉",
-                description: "You have successfully completed this training module.",
-              });
+              // Redirect to completion page
+              const videoName = encodeURIComponent(accessData.video.title);
+              const accessId = accessData.accessLog.id;
+              setLocation(`/completion/${accessId}?videoName=${videoName}`);
             }
           }
         },
@@ -255,10 +255,10 @@ export default function VideoPlayer() {
       clearInterval(updateInterval);
       sendProgressUpdate();
       
-      toast({
-        title: "Training Complete! 🎉",
-        description: "You have successfully completed this training module.",
-      });
+      // Redirect to completion page
+      const videoName = encodeURIComponent(accessData.video.title);
+      const accessId = accessData.accessLog.id;
+      setLocation(`/completion/${accessId}?videoName=${videoName}`);
     };
 
     video.addEventListener('loadeddata', handleLoadedData);
