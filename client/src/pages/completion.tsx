@@ -1,6 +1,6 @@
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Share2, Home, Clock, Award } from "lucide-react";
+import { CheckCircle, Share2, Home, Clock, Award, User, Tag, Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,8 @@ interface AccessLogData {
   watchDuration: number | null;
   completionPercentage: number | null;
   videoTitle: string | null;
+  videoDuration: string | null;
+  videoCategory: string | null;
 }
 
 function Completion() {
@@ -31,7 +33,11 @@ function Completion() {
   const videoName = accessLogData?.videoTitle || 'this training module';
   const completionPercentage = accessLogData?.completionPercentage || 0;
   const watchDuration = accessLogData?.watchDuration || 0;
-  const accessedAt = accessLogData?.accessedAt ? new Date(accessLogData.accessedAt).toLocaleDateString() : null;
+  const accessedAt = accessLogData?.accessedAt ? new Date(accessLogData.accessedAt).toLocaleTimeString('en-US', { hour12: false }) : null;
+  const videoDuration = accessLogData?.videoDuration || 'N/A';
+  const videoCategory = accessLogData?.videoCategory || 'N/A';
+  const viewerEmail = accessLogData?.email || '';
+  const viewerName = viewerEmail ? viewerEmail.substring(0, viewerEmail.indexOf('@')) + '...' : 'Unknown';
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -196,6 +202,51 @@ function Completion() {
                 </span>
               </div>
             )}
+          </div>
+
+          {/* Video Metadata */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Duration</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-duration">
+                  {videoDuration}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Tag className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-video-category">
+                  {videoCategory}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Play className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Access Time</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-access-time">
+                  {accessedAt}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Viewer</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-viewer-email">
+                  {viewerName}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}

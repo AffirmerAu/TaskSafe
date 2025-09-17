@@ -501,27 +501,6 @@ export default function VideoPlayer() {
                   </div>
                 </div>
 
-                {/* Video Metadata */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-border">
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Duration</div>
-                    <div className="font-semibold" data-testid="text-video-duration">{video.duration}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Category</div>
-                    <div className="font-semibold" data-testid="text-video-category">{video.category}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Access Time</div>
-                    <div className="font-semibold" data-testid="text-access-time">{accessTime}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Viewer</div>
-                    <div className="font-semibold text-sm" data-testid="text-viewer-email">
-                      {accessLog.email.substring(0, accessLog.email.indexOf('@'))}...
-                    </div>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>

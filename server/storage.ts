@@ -36,7 +36,7 @@ export interface IStorage {
   createAccessLog(accessLog: InsertAccessLog): Promise<AccessLog>;
   updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void>;
   getAccessLogsByVideo(videoId: string): Promise<AccessLog[]>;
-  getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null }) | undefined>;
+  getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null; videoDuration: string | null; videoCategory: string | null }) | undefined>;
   getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]>;
   getVideoAnalytics(videoId: string): Promise<{
     totalViews: number;
@@ -121,7 +121,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(accessLogs.accessedAt));
   }
 
-  async getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null }) | undefined> {
+  async getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null; videoDuration: string | null; videoCategory: string | null }) | undefined> {
     const [result] = await db.select({
       id: accessLogs.id,
       magicLinkId: accessLogs.magicLinkId,
@@ -134,6 +134,8 @@ export class DatabaseStorage implements IStorage {
       ipAddress: accessLogs.ipAddress,
       userAgent: accessLogs.userAgent,
       videoTitle: videos.title,
+      videoDuration: videos.duration,
+      videoCategory: videos.category,
     })
     .from(accessLogs)
     .leftJoin(videos, eq(accessLogs.videoId, videos.id))
