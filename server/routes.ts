@@ -129,8 +129,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get access log details by ID
-  app.get("/api/access/:accessLogId", async (req: Request, res: Response) => {
+  // Get access log details by ID for completion page
+  app.get("/api/access-logs/:accessLogId", async (req: Request, res: Response) => {
     try {
       const { accessLogId } = req.params;
       
