@@ -16,7 +16,7 @@ interface Video {
 
 export default function Home() {
   // Fetch all available videos
-  const { data: videos, isLoading, error } = useQuery<Video[]>({
+  const { data: videosRaw, isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/videos"],
     queryFn: async () => {
       const response = await fetch('/api/videos');
@@ -27,6 +27,19 @@ export default function Home() {
     },
     retry: false,
   });
+
+  // Reorder videos to prioritize "Safe Use of Aircraft Wheel Chocks and Safety Cones"
+  const videos = videosRaw ? [...videosRaw].sort((a, b) => {
+    // Move aircraft chocks video to the top
+    if (a.title.toLowerCase().includes('aircraft') && a.title.toLowerCase().includes('chocks')) {
+      return -1;
+    }
+    if (b.title.toLowerCase().includes('aircraft') && b.title.toLowerCase().includes('chocks')) {
+      return 1;
+    }
+    // Keep original order for other videos
+    return 0;
+  }) : undefined;
 
   if (isLoading) {
     return (
