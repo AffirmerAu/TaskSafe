@@ -505,17 +505,6 @@ export default function VideoPlayer() {
             </CardContent>
           </Card>
 
-          {/* Access Token - Bottom of Page */}
-          <Card className="shadow-sm mt-8">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">Access Token</div>
-                <div className="font-mono text-xs bg-muted px-3 py-2 rounded inline-block" data-testid="text-access-token">
-                  {token.substring(0, 8)}...{token.substring(token.length - 8)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
