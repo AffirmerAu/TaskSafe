@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import VideoThumbnail from "@/components/video-thumbnail";
 import EmailForm from "@/components/email-form";
 import EmailSentModal from "@/components/email-sent-modal";
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, CheckCircle, LogIn, ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Video {
   id: string;
@@ -21,14 +22,31 @@ export default function VideoRequest() {
   const [userEmail, setUserEmail] = useState("");
   const [videoId, setVideoId] = useState<string | null>(null);
   const emailFormRef = useRef<HTMLDivElement>(null);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  // Get video ID from URL parameters, default to specific video if none provided
+  // Get video ID from URL parameters, redirect to home if none provided
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const videoParam = urlParams.get('video');
-    // Set default video ID if no video parameter is provided
-    setVideoId(videoParam || '0f7e5417-33c0-4764-a8fb-4a49a193861c');
-  }, []);
+    
+    if (!videoParam) {
+      // Show toast message first, then redirect after a brief delay to ensure toast appears
+      toast({
+        title: "Select a training video",
+        description: "Please select a training video to continue.",
+        variant: "default",
+      });
+      
+      // Add a small delay before redirect to allow toast to render
+      setTimeout(() => {
+        setLocation('/');
+      }, 100);
+      return;
+    }
+    
+    setVideoId(videoParam);
+  }, [setLocation, toast]);
 
   // Fetch specific video by ID
   const { data: video, isLoading } = useQuery<Video>({
@@ -88,10 +106,16 @@ export default function VideoRequest() {
               <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="h-8 w-8 text-destructive" />
               </div>
-              <h2 className="text-xl font-semibold text-foreground mb-2">No Training Available</h2>
-              <p className="text-muted-foreground">
-                There are currently no training videos available. Please contact your administrator.
+              <h2 className="text-xl font-semibold text-foreground mb-2">Video Not Found</h2>
+              <p className="text-muted-foreground mb-6">
+                The requested training video could not be found or is no longer available.
               </p>
+              <Link href="/">
+                <Button data-testid="button-back-home-error">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Video Selection
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
