@@ -1,20 +1,37 @@
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Share2, Home } from "lucide-react";
+import { CheckCircle, Share2, Home, Clock, Award } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+
+interface AccessLogData {
+  id: string;
+  email: string;
+  videoId: string;
+  accessedAt: string;
+  watchDuration: number | null;
+  completionPercentage: number | null;
+  videoTitle: string | null;
+}
 
 function Completion() {
   const [, params] = useRoute("/completion/:accessId");
-  const [location] = useLocation();
   const { toast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
-
-  // Extract video name from URL search params
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const videoName = urlParams.get('videoName') || 'this training module';
   const accessId = params?.accessId;
+
+  // Fetch access log details including video title and completion data
+  const { data: accessLogData, isLoading, error } = useQuery<AccessLogData>({
+    queryKey: ['/api/access', accessId],
+    enabled: !!accessId,
+  });
+
+  const videoName = accessLogData?.videoTitle || 'this training module';
+  const completionPercentage = accessLogData?.completionPercentage || 0;
+  const watchDuration = accessLogData?.watchDuration || 0;
+  const accessedAt = accessLogData?.accessedAt ? new Date(accessLogData.accessedAt).toLocaleDateString() : null;
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -67,6 +84,39 @@ function Completion() {
     window.location.href = '/';
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-green-950 dark:to-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md mx-auto text-center shadow-xl">
+          <CardContent className="p-8">
+            <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">Loading completion details...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error || !accessLogData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-red-50 to-white dark:from-red-950 dark:to-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md mx-auto text-center shadow-xl">
+          <CardContent className="p-8">
+            <p className="text-red-600 dark:text-red-400">Unable to load completion details.</p>
+            <Button
+              onClick={handleBackToHome}
+              variant="outline"
+              className="mt-4"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-green-950 dark:to-gray-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto text-center shadow-xl">
@@ -89,6 +139,41 @@ function Completion() {
                 "{videoName}"
               </span>
             </p>
+          </div>
+
+          {/* Completion Stats */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Award className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Completion</span>
+              </div>
+              <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                {completionPercentage}%
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Watch Time</span>
+              </div>
+              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                {Math.floor(watchDuration / 60)}m {Math.floor(watchDuration % 60)}s
+              </span>
+            </div>
+
+            {accessedAt && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Completed</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
+                  {accessedAt}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
