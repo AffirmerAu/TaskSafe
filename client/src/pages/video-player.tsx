@@ -453,6 +453,54 @@ export default function VideoPlayer() {
                   </p>
                 </div>
 
+                {/* Progress Tracking */}
+                <div className="bg-muted/50 rounded-lg p-4 mt-4 mb-4">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <BarChart3 className="inline h-5 w-5 mr-2 text-primary" />
+                    Viewing Progress
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-foreground">Completion</span>
+                        <span className="text-muted-foreground" data-testid="text-completion-percentage">
+                          {progress.completionPercentage}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${progress.completionPercentage}%` }}
+                          data-testid="progress-bar"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <Play className="h-4 w-4 text-green-600" />
+                        <span className="text-muted-foreground">Started: </span>
+                        <span className="font-medium" data-testid="text-start-time">{accessTime}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span className="text-muted-foreground">Watched: </span>
+                        <span className="font-medium" data-testid="text-watch-duration">
+                          {Math.floor(progress.watchDuration / 60)}:{(progress.watchDuration % 60).toString().padStart(2, '0')}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className={`h-4 w-4 ${progress.completionPercentage >= 100 ? 'text-green-600' : 'text-gray-400'}`} />
+                        <span className="text-muted-foreground">Completed: </span>
+                        <span className="font-medium" data-testid="text-completion-status">
+                          {progress.completionPercentage >= 100 ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Video Metadata */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-border">
                   <div className="text-center">
@@ -472,56 +520,6 @@ export default function VideoPlayer() {
                     <div className="font-semibold text-sm" data-testid="text-viewer-email">
                       {accessLog.email.substring(0, accessLog.email.indexOf('@'))}...
                     </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Progress Tracking */}
-          <Card className="shadow-sm">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                <BarChart3 className="inline h-5 w-5 mr-2 text-primary" />
-                Viewing Progress
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-foreground">Completion</span>
-                    <span className="text-muted-foreground" data-testid="text-completion-percentage">
-                      {progress.completionPercentage}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300" 
-                      style={{ width: `${progress.completionPercentage}%` }}
-                      data-testid="progress-bar"
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Play className="h-4 w-4 text-green-600" />
-                    <span className="text-muted-foreground">Started: </span>
-                    <span className="font-medium" data-testid="text-start-time">{accessTime}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span className="text-muted-foreground">Watched: </span>
-                    <span className="font-medium" data-testid="text-watch-duration">
-                      {Math.floor(progress.watchDuration / 60)}:{(progress.watchDuration % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className={`h-4 w-4 ${progress.completionPercentage >= 100 ? 'text-green-600' : 'text-gray-400'}`} />
-                    <span className="text-muted-foreground">Completed: </span>
-                    <span className="font-medium" data-testid="text-completion-status">
-                      {progress.completionPercentage >= 100 ? 'Yes' : 'No'}
-                    </span>
                   </div>
                 </div>
               </div>
