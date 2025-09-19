@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 interface AccessLogData {
   id: string;
   email: string;
+  userName: string;
   videoId: string;
   accessedAt: string;
   watchDuration: number | null;
@@ -37,7 +38,7 @@ function Completion() {
   const videoDuration = accessLogData?.videoDuration || 'N/A';
   const videoCategory = accessLogData?.videoCategory || 'N/A';
   const viewerEmail = accessLogData?.email || '';
-  const viewerName = viewerEmail ? viewerEmail.substring(0, viewerEmail.indexOf('@')) : 'Unknown';
+  const viewerName = accessLogData?.userName || 'Unknown';
 
   const handleShare = async () => {
     setIsSharing(true);
