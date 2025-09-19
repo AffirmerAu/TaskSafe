@@ -111,6 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: magicLink.email,
         userName: magicLink.userName,
         videoId: video.id,
+        companyTag: video.companyTag,
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.get('User-Agent'),
       });
