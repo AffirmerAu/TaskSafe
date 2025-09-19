@@ -14,6 +14,7 @@ interface AccessLogData {
   accessedAt: string;
   watchDuration: number | null;
   completionPercentage: number | null;
+  companyTag: string | null;
   videoTitle: string | null;
   videoDuration: string | null;
   videoCategory: string | null;
@@ -42,6 +43,7 @@ function Completion() {
   const videoCategory = accessLogData?.videoCategory || 'N/A';
   const viewerEmail = accessLogData?.email || '';
   const viewerName = accessLogData?.userName || 'Unknown';
+  const companyTag = accessLogData?.companyTag || 'N/A';
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -227,6 +229,16 @@ function Completion() {
               </div>
               <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-viewer-email">
                 {viewerName}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Tag className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</span>
+              </div>
+              <span className="text-sm font-bold text-gray-600 dark:text-gray-400" data-testid="text-company-tag">
+                {companyTag}
               </span>
             </div>
           </div>
