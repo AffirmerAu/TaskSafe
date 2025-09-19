@@ -33,7 +33,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request access via email
   app.post("/api/request-access", async (req: Request, res: Response) => {
     try {
-      const { email, videoId } = requestAccessSchema.parse(req.body);
+      const { userName, email, videoId } = requestAccessSchema.parse(req.body);
       
       // Get specific video if videoId provided, otherwise get active video
       const video = videoId 
@@ -52,6 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const magicLink = await storage.createMagicLink({
         token,
         email,
+        userName,
         videoId: video.id,
         expiresAt,
       });
@@ -108,6 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accessLog = await storage.createAccessLog({
         magicLinkId: magicLink.id,
         email: magicLink.email,
+        userName: magicLink.userName,
         videoId: video.id,
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.get('User-Agent'),
@@ -663,6 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Create a temporary magic link first (needed for foreign key)
             const tempMagicLink = await storage.createMagicLink({
               email: log.email,
+              userName: log.userName || log.email.substring(0, log.email.indexOf('@')) || 'Imported User',
               videoId: log.videoId,
               token: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               expiresAt: new Date(Date.now() - 1000), // Already expired
@@ -672,6 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.createAccessLog({
               magicLinkId: tempMagicLink.id,
               email: log.email,
+              userName: log.userName || log.email.substring(0, log.email.indexOf('@')) || 'Imported User',
               videoId: log.videoId,
               watchDuration: log.watchDuration || 0,
               completionPercentage: log.completionPercentage || 0,
