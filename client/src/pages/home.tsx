@@ -214,7 +214,7 @@ function Footer() {
               <Shield className="h-3 w-3 text-primary-foreground" />
             </div>
             <span className="text-sm text-muted-foreground">
-              © 2024 TaskSafe. Secure training platform.
+              © 2025 TaskSafe by Affirmer. Secure training platform.
             </span>
           </div>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
