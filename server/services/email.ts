@@ -3,7 +3,61 @@ import { Resend } from 'resend';
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-interface EmailParams {
+const FALLBACK_LOCAL_HOST = 'localhost:5000';
+
+const DEPLOYMENT_ENV_KEYS = [
+  'MAGIC_LINK_BASE_URL',
+  'RENDER_EXTERNAL_URL',
+  'VERCEL_URL',
+  'DEPLOYMENT_URL',
+  'SITE_URL',
+  'URL',
+] as const;
+
+function normalizeBaseUrl(
+  candidate: string | undefined | null,
+  { protocol = 'https' }: { protocol?: 'http' | 'https' } = {},
+): string | null {
+  if (!candidate) {
+    return null;
+  }
+
+  let trimmed = candidate.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Remove trailing slashes to avoid duplicate separators when composing URLs.
+  trimmed = trimmed.replace(/\/+$/, '');
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `${protocol}://${trimmed}`;
+}
+
+function resolveMagicLinkBaseUrl(): string {
+  for (const key of DEPLOYMENT_ENV_KEYS) {
+    const normalized = normalizeBaseUrl(process.env[key]);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')
+    .map((domain) => domain.trim())
+    .find(Boolean);
+
+  const normalizedReplitDomain = normalizeBaseUrl(replitDomain);
+  if (normalizedReplitDomain) {
+    return normalizedReplitDomain;
+  }
+
+  return normalizeBaseUrl(FALLBACK_LOCAL_HOST, { protocol: 'http' })!;
+}
+
+export interface EmailParams {
   to: string;
   from: string;
   subject: string;
@@ -51,8 +105,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 }
 
 export function generateMagicLinkEmail(email: string, magicLink: string, videoTitle: string): EmailParams {
-  const domains = process.env.REPLIT_DOMAINS?.split(',') || ['localhost:5000'];
-  const baseUrl = `https://${domains[0]}`;
+  const baseUrl = resolveMagicLinkBaseUrl();
   const accessUrl = `${baseUrl}/access?token=${encodeURIComponent(magicLink)}`;
 
   return {
