@@ -3,12 +3,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Send, Mail, Info, Loader2 } from "lucide-react";
+import { Send, Mail, Info, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const emailSchema = z.object({
   userName: z.string().min(1, "Please enter your name"),
@@ -20,6 +21,7 @@ type EmailFormData = z.infer<typeof emailSchema>;
 interface Video {
   id: string;
   title: string;
+  companyTag?: string | null;
 }
 
 interface EmailFormProps {
@@ -132,8 +134,22 @@ export default function EmailForm({ onEmailSent, video }: EmailFormProps) {
             )}
           />
 
-          <Button 
-            type="submit" 
+          {video.companyTag && (
+            <div className="text-center" data-testid="company-tag-indicator">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+                Company
+              </p>
+              <div className="flex justify-center">
+                <Badge variant="secondary" className="flex items-center gap-2 px-3 py-1">
+                  <Building2 className="h-4 w-4" />
+                  <span className="text-sm font-semibold text-foreground">{video.companyTag}</span>
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
             className="w-full"
             disabled={requestAccessMutation.isPending}
             data-testid="button-submit"
