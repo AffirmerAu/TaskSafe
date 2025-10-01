@@ -394,14 +394,17 @@ export default function AdminVideos() {
     }
   };
 
+  const getVideoShareUrl = (videoId: string) =>
+    `${window.location.origin}/video-request?video=${videoId}`;
+
   const handleGenerateQR = (video: Video) => {
-    const shareUrl = `${window.location.origin}/?video=${video.id}`;
+    const shareUrl = getVideoShareUrl(video.id);
     setQrShareUrl(shareUrl);
     setIsQRDialogOpen(true);
   };
 
   const copyShareUrl = (video: Video) => {
-    const shareUrl = `${window.location.origin}/?video=${video.id}`;
+    const shareUrl = getVideoShareUrl(video.id);
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Copied to clipboard",
