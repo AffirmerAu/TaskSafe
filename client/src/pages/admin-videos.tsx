@@ -63,6 +63,20 @@ function VideoDialog({
     companyTag: video?.companyTag || "",
   });
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    setFormData({
+      title: video?.title || "",
+      description: video?.description || "",
+      thumbnailUrl: video?.thumbnailUrl || "",
+      videoUrl: video?.videoUrl || "",
+      duration: video?.duration || "",
+      category: video?.category || "",
+      companyTag: video?.companyTag || "",
+    });
+  }, [video, isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -380,14 +394,17 @@ export default function AdminVideos() {
     }
   };
 
+  const getVideoShareUrl = (videoId: string) =>
+    `${window.location.origin}/video-request?video=${videoId}`;
+
   const handleGenerateQR = (video: Video) => {
-    const shareUrl = `${window.location.origin}/?video=${video.id}`;
+    const shareUrl = getVideoShareUrl(video.id);
     setQrShareUrl(shareUrl);
     setIsQRDialogOpen(true);
   };
 
   const copyShareUrl = (video: Video) => {
-    const shareUrl = `${window.location.origin}/?video=${video.id}`;
+    const shareUrl = getVideoShareUrl(video.id);
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Copied to clipboard",
