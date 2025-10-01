@@ -63,6 +63,20 @@ function VideoDialog({
     companyTag: video?.companyTag || "",
   });
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    setFormData({
+      title: video?.title || "",
+      description: video?.description || "",
+      thumbnailUrl: video?.thumbnailUrl || "",
+      videoUrl: video?.videoUrl || "",
+      duration: video?.duration || "",
+      category: video?.category || "",
+      companyTag: video?.companyTag || "",
+    });
+  }, [video, isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
