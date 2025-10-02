@@ -2,7 +2,14 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { sendEmail, generateMagicLinkEmail } from "./services/email";
-import { requestAccessSchema, updateProgressSchema, adminLoginSchema, adminCreateUserSchema, insertVideoSchema, insertCompanyTagSchema } from "@shared/schema";
+import {
+  requestAccessSchema,
+  updateProgressSchema,
+  adminLoginSchema,
+  adminCreateUserSchema,
+  insertVideoSchema,
+  insertCompanyTagSchema,
+} from "@shared/schema";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import type { AdminUser } from "@shared/schema";
