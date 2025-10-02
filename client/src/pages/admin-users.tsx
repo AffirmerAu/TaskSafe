@@ -48,8 +48,8 @@ function UserDialog({
   const [formData, setFormData] = useState<UserFormData>({
     email: user?.email || "",
     password: "",
-    role: user?.role || "ADMIN",
-    companyTag: user?.companyTag || "",
+    role: user?.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN",
+    companyTag: user?.companyTag ?? "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -209,10 +209,7 @@ export default function AdminUsers() {
 
   // Create user mutation
   const createUserMutation = useMutation({
-    mutationFn: (data: UserFormData) => apiRequest("/api/admin/users", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: UserFormData) => apiRequest("POST", "/api/admin/users", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setIsUserDialogOpen(false);
@@ -232,11 +229,8 @@ export default function AdminUsers() {
 
   // Update user mutation
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UserFormData }) => 
-      apiRequest(`/api/admin/users/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: ({ id, data }: { id: string; data: UserFormData }) =>
+      apiRequest("PATCH", `/api/admin/users/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setIsUserDialogOpen(false);
@@ -257,9 +251,7 @@ export default function AdminUsers() {
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/users/${id}`, {
-      method: "DELETE",
-    }),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/users/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
@@ -311,7 +303,7 @@ export default function AdminUsers() {
     return <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
   };
 
-  const getCompanyBadge = (companyTag?: string) => {
+  const getCompanyBadge = (companyTag?: string | null) => {
     if (!companyTag) {
       return <span className="text-muted-foreground text-sm">All Companies</span>;
     }
