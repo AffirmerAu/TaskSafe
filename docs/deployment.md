@@ -9,7 +9,7 @@ Magic link emails now rely on a dedicated `MAGIC_LINK_BASE_URL` environment vari
 1. Navigate to your Render service dashboard.
 2. Open the **Environment** tab and add a new environment variable:
    - **Key**: `MAGIC_LINK_BASE_URL`
-   - **Value**: The full public URL of your service (for example, `https://tasksafe.onrender.com`).
+   - **Value**: The full public URL of your service (for example, `https://tasksafe.au`).
 3. Deploy or restart the service so the new value is picked up.
 
 With this configuration, generated magic links will always reference the deployed hostname instead of defaulting to `localhost`.
