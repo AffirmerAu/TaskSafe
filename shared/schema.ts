@@ -7,6 +7,7 @@ export const companyTags = pgTable("company_tags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   description: text("description"),
+  logoUrl: text("logo_url"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
@@ -86,6 +87,14 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
 export const insertCompanyTagSchema = createInsertSchema(companyTags).omit({
   id: true,
   createdAt: true,
+}).extend({
+  logoUrl: z
+    .string()
+    .trim()
+    .url("Please enter a valid logo URL")
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
