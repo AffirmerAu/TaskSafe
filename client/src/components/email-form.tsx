@@ -22,6 +22,7 @@ interface Video {
   id: string;
   title: string;
   companyTag?: string | null;
+  companyTagLogoUrl?: string | null;
 }
 
 interface EmailFormProps {
@@ -139,9 +140,20 @@ export default function EmailForm({ onEmailSent, video }: EmailFormProps) {
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
                 Company
               </p>
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-12 w-12 rounded-full border border-border bg-muted/30 flex items-center justify-center overflow-hidden">
+                  {video.companyTagLogoUrl ? (
+                    <img
+                      src={video.companyTagLogoUrl}
+                      alt={`${video.companyTag} logo`}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
                 <Badge variant="secondary" className="flex items-center gap-2 px-3 py-1">
-                  <Building2 className="h-4 w-4" />
+                  {!video.companyTagLogoUrl && <Building2 className="h-4 w-4" />}
                   <span className="text-sm font-semibold text-foreground">{video.companyTag}</span>
                 </Badge>
               </div>

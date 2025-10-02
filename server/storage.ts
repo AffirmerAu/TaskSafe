@@ -51,8 +51,9 @@ export interface IStorage {
   getAllAdminUsers(): Promise<AdminUser[]>;
   updateAdminUser(id: string, adminUser: Partial<InsertAdminUser>): Promise<AdminUser>;
   deleteAdminUser(id: string): Promise<void>;
-  
+
   // Company tag methods
+  getCompanyTagByName(name: string): Promise<CompanyTag | undefined>;
   getAllCompanyTags(): Promise<CompanyTag[]>;
   createCompanyTag(companyTag: InsertCompanyTag): Promise<CompanyTag>;
   updateCompanyTag(id: string, companyTag: Partial<InsertCompanyTag>): Promise<CompanyTag>;
@@ -110,8 +111,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void> {
+    const normalizedUpdates = { ...updates };
+    if (typeof normalizedUpdates.completionPercentage === "number") {
+      normalizedUpdates.completionPercentage = Math.min(100, normalizedUpdates.completionPercentage);
+    }
+
     await db.update(accessLogs)
-      .set(updates)
+      .set(normalizedUpdates)
       .where(eq(accessLogs.id, id));
   }
 
@@ -249,6 +255,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Company tag methods
+  async getCompanyTagByName(name: string): Promise<CompanyTag | undefined> {
+    const [companyTag] = await db.select().from(companyTags)
+      .where(and(eq(companyTags.name, name), eq(companyTags.isActive, true)))
+      .limit(1);
+    return companyTag || undefined;
+  }
+
   async getAllCompanyTags(): Promise<CompanyTag[]> {
     return await db.select().from(companyTags)
       .where(eq(companyTags.isActive, true))
