@@ -76,19 +76,44 @@ export default function EmailForm({ onEmailSent, video }: EmailFormProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-sm">
-      <div className="text-center mb-6">
-        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-          <Mail className="h-6 w-6 text-primary" />
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-md mx-auto">
+      <div className="flex flex-col items-center text-center gap-4">
+        {video.companyTag ? (
+          <div className="flex flex-col items-center gap-3" data-testid="company-tag-indicator">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+              Company
+            </span>
+            <div className="h-16 w-16 rounded-full border-2 border-primary/60 bg-primary/10 flex items-center justify-center overflow-hidden">
+              {video.companyTagLogoUrl ? (
+                <img
+                  src={video.companyTagLogoUrl}
+                  alt={`${video.companyTag} logo`}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <Building2 className="h-6 w-6 text-primary" />
+              )}
+            </div>
+            <p className="text-lg font-semibold text-foreground">{video.companyTag}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Mail className="h-7 w-7 text-primary" />
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold text-foreground">Request Access</h3>
+          <p className="text-muted-foreground">
+            We'll send you a secure magic link to access this training video
+          </p>
         </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Request Access</h3>
-        <p className="text-muted-foreground">
-          We'll send you a secure magic link to access this training video
-        </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="form-email">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" data-testid="form-email">
           <FormField
             control={form.control}
             name="userName"
@@ -135,31 +160,6 @@ export default function EmailForm({ onEmailSent, video }: EmailFormProps) {
             )}
           />
 
-          {video.companyTag && (
-            <div className="text-center" data-testid="company-tag-indicator">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                Company
-              </p>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-12 w-12 rounded-full border border-border bg-muted/30 flex items-center justify-center overflow-hidden">
-                  {video.companyTagLogoUrl ? (
-                    <img
-                      src={video.companyTagLogoUrl}
-                      alt={`${video.companyTag} logo`}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <Badge variant="secondary" className="flex items-center gap-2 px-3 py-1">
-                  {!video.companyTagLogoUrl && <Building2 className="h-4 w-4" />}
-                  <span className="text-sm font-semibold text-foreground">{video.companyTag}</span>
-                </Badge>
-              </div>
-            </div>
-          )}
-
           <Button
             type="submit"
             className="w-full"
@@ -182,14 +182,14 @@ export default function EmailForm({ onEmailSent, video }: EmailFormProps) {
       </Form>
 
       {/* Security Notice */}
-      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-          <div className="text-sm">
-            <p className="font-medium text-foreground mb-1">Security Notice</p>
+      <div className="mt-8 rounded-xl border border-border/60 bg-muted/40 p-4">
+        <div className="flex items-start gap-3 text-sm">
+          <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">Security Notice</p>
             <p className="text-muted-foreground">
-              Access links expire after 24 hours and can only be used once. 
-              Your viewing activity will be logged for compliance tracking.
+              Access links expire after 24 hours and can only be used once. Your viewing activity will be logged for
+              compliance tracking.
             </p>
           </div>
         </div>
