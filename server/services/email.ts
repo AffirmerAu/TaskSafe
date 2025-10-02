@@ -89,6 +89,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       subject: params.subject,
       text: params.text,
       html: params.html,
+      react: null,
     });
 
     if (error) {
