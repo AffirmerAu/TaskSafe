@@ -88,13 +88,17 @@ export const insertCompanyTagSchema = createInsertSchema(companyTags).omit({
   id: true,
   createdAt: true,
 }).extend({
-  logoUrl: z
-    .string()
-    .trim()
-    .url("Please enter a valid logo URL")
-    .optional()
-    .or(z.literal(""))
-    .transform((value) => (value ? value : undefined)),
+  logoUrl: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return undefined;
+      }
+
+      const trimmed = value.trim();
+      return trimmed === "" ? undefined : trimmed;
+    },
+    z.string().url("Please enter a valid logo URL").optional(),
+  ),
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
