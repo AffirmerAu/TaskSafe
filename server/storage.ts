@@ -111,13 +111,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void> {
-    const normalizedUpdates = { ...updates };
-    if (typeof normalizedUpdates.completionPercentage === "number") {
-      normalizedUpdates.completionPercentage = Math.min(100, normalizedUpdates.completionPercentage);
+    const normalizedUpdates: { watchDuration?: number; completionPercentage?: number } = {
+      ...updates,
+    };
+
+    const { completionPercentage } = updates;
+    if (typeof completionPercentage === "number") {
+      normalizedUpdates.completionPercentage = Math.min(100, completionPercentage);
     }
 
     await db.update(accessLogs)
-      .set(normalizedUpdates)
+      .set({ ...normalizedUpdates })
       .where(eq(accessLogs.id, id));
   }
 
