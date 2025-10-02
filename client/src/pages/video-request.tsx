@@ -16,6 +16,7 @@ interface Video {
   duration: string;
   category: string;
   companyTag?: string | null;
+  companyTagLogoUrl?: string | null;
 }
 
 export default function VideoRequest() {

@@ -30,6 +30,7 @@ export default function AdminCompanyTags() {
       name: "",
       description: "",
       isActive: true,
+      logoUrl: undefined,
     },
   });
 
@@ -39,6 +40,7 @@ export default function AdminCompanyTags() {
       name: "",
       description: "",
       isActive: true,
+      logoUrl: undefined,
     },
   });
 
@@ -111,6 +113,7 @@ export default function AdminCompanyTags() {
       name: tag.name,
       description: tag.description || "",
       isActive: tag.isActive,
+      logoUrl: tag.logoUrl || undefined,
     });
     setShowEditDialog(true);
   };
@@ -122,12 +125,21 @@ export default function AdminCompanyTags() {
   };
 
   const onCreateSubmit = (data: InsertCompanyTag) => {
-    createMutation.mutate(data);
+    createMutation.mutate({
+      ...data,
+      logoUrl: data.logoUrl?.trim() ? data.logoUrl.trim() : undefined,
+    });
   };
 
   const onEditSubmit = (data: InsertCompanyTag) => {
     if (editingTag) {
-      updateMutation.mutate({ id: editingTag.id, data });
+      updateMutation.mutate({
+        id: editingTag.id,
+        data: {
+          ...data,
+          logoUrl: data.logoUrl?.trim() ? data.logoUrl.trim() : undefined,
+        }
+      });
     }
   };
 
@@ -187,11 +199,29 @@ export default function AdminCompanyTags() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Brief description of this company tag..." 
-                          {...field} 
+                        <Textarea
+                          placeholder="Brief description of this company tag..."
+                          {...field}
                           value={field.value || ""}
                           data-testid="input-tag-description"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="logoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Logo URL (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://example.com/logo.png"
+                          {...field}
+                          value={field.value ?? ""}
+                          data-testid="input-tag-logo-url"
                         />
                       </FormControl>
                       <FormMessage />
@@ -242,14 +272,29 @@ export default function AdminCompanyTags() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg" data-testid={`text-tag-name-${tag.id}`}>
-                      {tag.name}
-                    </CardTitle>
-                    {tag.description && (
-                      <CardDescription data-testid={`text-tag-description-${tag.id}`}>
-                        {tag.description}
-                      </CardDescription>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 flex items-center justify-center rounded-full border border-border bg-muted/30 overflow-hidden">
+                        {tag.logoUrl ? (
+                          <img
+                            src={tag.logoUrl}
+                            alt={`${tag.name} logo`}
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <Tag className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg" data-testid={`text-tag-name-${tag.id}`}>
+                          {tag.name}
+                        </CardTitle>
+                        {tag.description && (
+                          <CardDescription data-testid={`text-tag-description-${tag.id}`}>
+                            {tag.description}
+                          </CardDescription>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -318,11 +363,29 @@ export default function AdminCompanyTags() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Brief description of this company tag..." 
-                        {...field} 
+                      <Textarea
+                        placeholder="Brief description of this company tag..."
+                        {...field}
                         value={field.value || ""}
                         data-testid="input-edit-tag-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="logoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Logo URL (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://example.com/logo.png"
+                        {...field}
+                        value={field.value ?? ""}
+                        data-testid="input-edit-tag-logo-url"
                       />
                     </FormControl>
                     <FormMessage />

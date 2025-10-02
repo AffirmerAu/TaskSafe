@@ -102,6 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Video not found" });
       }
 
+      const companyTagDetails = video.companyTag
+        ? await storage.getCompanyTagByName(video.companyTag)
+        : undefined;
+
+      const videoResponse = {
+        ...video,
+        companyTagLogoUrl: companyTagDetails?.logoUrl ?? null,
+      };
+
       // Mark magic link as used
       await storage.markMagicLinkAsUsed(magicLink.id);
 
@@ -117,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({
-        video,
+        video: videoResponse,
         accessLog: {
           id: accessLog.id,
           accessedAt: accessLog.accessedAt,
@@ -155,8 +164,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accessLogId } = req.params;
       const updates = updateProgressSchema.parse(req.body);
+      const normalizedCompletion = Math.min(100, updates.completionPercentage >= 95 ? 100 : updates.completionPercentage);
 
-      await storage.updateAccessLog(accessLogId, updates);
+      await storage.updateAccessLog(accessLogId, {
+        ...updates,
+        completionPercentage: normalizedCompletion,
+      });
 
       res.json({ message: "Progress updated successfully" });
 
@@ -189,18 +202,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/videos", async (req: Request, res: Response) => {
     try {
       const videos = await storage.getAllVideos();
-      
-      // Return only active videos with basic info (excluding sensitive data)
-      const publicVideosData = videos
-        .filter(video => video.isActive)
-        .map(video => ({
-          id: video.id,
-          title: video.title,
-          description: video.description,
-          thumbnailUrl: video.thumbnailUrl,
-          duration: video.duration,
-          category: video.category
-        }));
+
+      // Treat videos without an explicit inactive flag as active for backwards compatibility
+      const activeVideos = videos.filter((video) => video.isActive !== false);
+
+      // Cache company tag lookups to avoid redundant database queries when multiple
+      // videos share the same tag.
+      const tagLogoCache = new Map<string, string | null>();
+
+      const publicVideosData = await Promise.all(
+        activeVideos.map(async (video) => {
+          let companyTagLogoUrl: string | null = null;
+
+          if (video.companyTag) {
+            if (tagLogoCache.has(video.companyTag)) {
+              companyTagLogoUrl = tagLogoCache.get(video.companyTag)!;
+            } else {
+              const tagDetails = await storage.getCompanyTagByName(video.companyTag);
+              companyTagLogoUrl = tagDetails?.logoUrl ?? null;
+              tagLogoCache.set(video.companyTag, companyTagLogoUrl);
+            }
+          }
+
+          return {
+            id: video.id,
+            title: video.title,
+            description: video.description,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+            category: video.category,
+            companyTag: video.companyTag,
+            companyTagLogoUrl,
+          };
+        })
+      );
 
       res.json(publicVideosData);
 
@@ -221,13 +256,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Return basic video info (excluding sensitive data)
+      let companyTagLogoUrl: string | null = null;
+      if (video.companyTag) {
+        const tagDetails = await storage.getCompanyTagByName(video.companyTag);
+        companyTagLogoUrl = tagDetails?.logoUrl ?? null;
+      }
+
       const publicVideoData = {
         id: video.id,
         title: video.title,
         description: video.description,
         thumbnailUrl: video.thumbnailUrl,
         duration: video.duration,
-        category: video.category
+        category: video.category,
+        companyTag: video.companyTag,
+        companyTagLogoUrl,
       };
 
       res.json(publicVideoData);
@@ -624,9 +667,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const allTags = await storage.getAllCompanyTags();
             const existingTag = allTags.find(t => t.name === tag.name);
             if (!existingTag) {
+              const logoUrl =
+                typeof tag.logoUrl === "string" && tag.logoUrl.trim().length > 0
+                  ? tag.logoUrl.trim()
+                  : undefined;
+
               await storage.createCompanyTag({
                 name: tag.name,
                 description: tag.description || null,
+                logoUrl,
+                isActive: typeof tag.isActive === "boolean" ? tag.isActive : true,
               });
               importCount++;
             }

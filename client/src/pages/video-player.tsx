@@ -15,6 +15,8 @@ interface AccessData {
     videoUrl: string;
     duration: string;
     category: string;
+    companyTag?: string | null;
+    companyTagLogoUrl?: string | null;
   };
   accessLog: {
     id: string;
@@ -127,9 +129,13 @@ export default function VideoPlayer() {
 
   // Progress update functions (shared across all player types)
   const updateProgress = useCallback((watchDuration: number, completionPercentage: number) => {
+    const normalizedCompletion = completionPercentage >= 95 ? 100 : completionPercentage;
     const newProgress = {
       watchDuration: Math.round(watchDuration),
-      completionPercentage: Math.max(completionPercentage, progressRef.current.completionPercentage)
+      completionPercentage: Math.min(
+        100,
+        Math.max(normalizedCompletion, progressRef.current.completionPercentage)
+      )
     };
 
     progressRef.current = newProgress;
