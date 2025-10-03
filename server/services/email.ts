@@ -197,3 +197,86 @@ TaskSafe Security Team
     `
   };
 }
+
+interface CompletionEmailParams {
+  to: string;
+  viewerName: string;
+  viewerEmail: string;
+  videoTitle: string;
+  completedAt: Date;
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function generateCompletionNotificationEmail({
+  to,
+  viewerName,
+  viewerEmail,
+  videoTitle,
+  completedAt,
+}: CompletionEmailParams): EmailParams {
+  const completedAtText = formatDate(completedAt);
+
+  const text = `
+Training completion notification
+
+Video: ${videoTitle}
+Viewer: ${viewerName} (${viewerEmail})
+Completed at: ${completedAtText}
+
+The viewer has successfully completed the training video.
+`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Completion Notification</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f8fafc;">
+  <div style="max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background-color:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+      <div style="background-color:#2563eb;padding:20px;text-align:center;color:white;">
+        <h1 style="margin:0;font-size:22px;font-weight:600;">Training Completion</h1>
+      </div>
+      <div style="padding:24px;">
+        <p style="margin:0 0 16px 0;color:#1f2937;">Hello,</p>
+        <p style="margin:0 0 16px 0;color:#4b5563;">
+          The following training video has been completed:
+        </p>
+        <div style="background-color:#f3f4f6;border-radius:6px;padding:16px;margin-bottom:16px;">
+          <p style="margin:0 0 8px 0;color:#1f2937;"><strong>Video:</strong> ${videoTitle}</p>
+          <p style="margin:0 0 8px 0;color:#1f2937;"><strong>Viewer:</strong> ${viewerName} (${viewerEmail})</p>
+          <p style="margin:0;color:#1f2937;"><strong>Completed at:</strong> ${completedAtText}</p>
+        </div>
+        <p style="margin:0;color:#6b7280;font-size:14px;">
+          This notification was sent automatically by TaskSafe when the viewer reached 100% completion.
+        </p>
+      </div>
+      <div style="background-color:#f9fafb;padding:16px;text-align:center;color:#9ca3af;font-size:12px;">
+        © ${new Date().getFullYear()} TaskSafe. All rights reserved.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  return {
+    to,
+    from: 'noreply@tasksafe.au',
+    subject: `TaskSafe: ${videoTitle} completed`,
+    text,
+    html,
+  };
+}
