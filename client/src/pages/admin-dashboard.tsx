@@ -14,7 +14,8 @@ import {
   Tag,
   Menu,
   X,
-  UserCog
+  UserCog,
+  Home,
 } from "lucide-react";
 import AdminVideos from "@/pages/admin-videos";
 import AdminCompletions from "@/pages/admin-completions";
@@ -28,6 +29,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
+    { name: "Home", href: "/admin", icon: Home },
     ...(adminUser?.role === "SUPER_ADMIN"
       ? [
           { name: "Admin Users", href: "/admin/users", icon: Users },
