@@ -7,6 +7,7 @@ import {
   updateProgressSchema,
   adminLoginSchema,
   adminCreateUserSchema,
+  adminUpdateUserSchema,
   insertVideoSchema,
   insertCompanyTagSchema,
 } from "@shared/schema";
@@ -476,6 +477,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createAdminUser({
         ...userData,
         password: hashedPassword,
+        companyTag: userData.role === "SUPER_ADMIN"
+          ? null
+          : userData.companyTag?.trim() ? userData.companyTag.trim() : null,
       });
 
       const { password: _, ...userWithoutPassword } = user;
@@ -491,11 +495,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/users/:id", requireSuperAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const updates = adminCreateUserSchema.partial().parse(req.body);
-      
+      const updates = adminUpdateUserSchema.parse(req.body);
+
       // Hash password if provided
       if (updates.password) {
         updates.password = await bcrypt.hash(updates.password, 12);
+      }
+
+      if (updates.role === "SUPER_ADMIN") {
+        updates.companyTag = null;
+      } else if (updates.companyTag !== undefined) {
+        updates.companyTag = updates.companyTag?.trim() ? updates.companyTag.trim() : null;
       }
 
       const user = await storage.updateAdminUser(id, updates);

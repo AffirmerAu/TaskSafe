@@ -29,8 +29,8 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
     ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
+      { name: "Team", href: "/admin/users", icon: Users },
+      { name: "Companies", href: "/admin/company-tags", icon: Tag }
     ] : []),
   ];
 
