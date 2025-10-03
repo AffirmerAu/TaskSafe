@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/admin-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,12 +14,13 @@ import {
   Edit, 
   Trash2, 
   ExternalLink, 
-  QrCode, 
+  QrCode,
   Copy,
   Eye,
   PlayCircle,
   Calendar,
-  Tag
+  Tag,
+  Share2
 } from "lucide-react";
 import type { Video, InsertVideo, CompanyTag } from "@shared/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +34,7 @@ interface VideoFormData {
   duration: string;
   category: string;
   companyTag?: string;
+  completionEmail?: string;
 }
 
 function VideoDialog({ 
@@ -61,6 +63,7 @@ function VideoDialog({
     duration: video?.duration || "",
     category: video?.category || "",
     companyTag: video?.companyTag || "",
+    completionEmail: video?.completionEmail || "",
   });
 
   React.useEffect(() => {
@@ -74,6 +77,7 @@ function VideoDialog({
       duration: video?.duration || "",
       category: video?.category || "",
       companyTag: video?.companyTag || "",
+      completionEmail: video?.completionEmail || "",
     });
   }, [video, isOpen]);
 
@@ -147,7 +151,7 @@ function VideoDialog({
                 data-testid="input-video-url"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="duration">Duration</Label>
               <Input
@@ -159,6 +163,20 @@ function VideoDialog({
                 data-testid="input-video-duration"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="completionEmail">Completion Notification Email</Label>
+            <Input
+              id="completionEmail"
+              type="email"
+              value={formData.completionEmail}
+              onChange={(e) => handleChange("completionEmail", e.target.value)}
+              placeholder="Optional email to notify when viewers finish"
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave blank if you do not want to send automatic completion notifications.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,11 +326,30 @@ export default function AdminVideos() {
   const [isQRDialogOpen, setIsQRDialogOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | undefined>();
   const [qrShareUrl, setQrShareUrl] = useState("");
+  const [completionEmails, setCompletionEmails] = useState<Record<string, string>>({});
 
   // Fetch videos
   const { data: videos = [], isLoading } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],
   });
+
+  useEffect(() => {
+    const latestValues = Object.fromEntries(
+      videos.map((video) => [video.id, video.completionEmail ?? ""] as const)
+    );
+
+    setCompletionEmails((previous) => {
+      const shouldUpdate =
+        Object.keys(previous).length !== videos.length ||
+        videos.some((video) => previous[video.id] !== (video.completionEmail ?? ""));
+
+      if (!shouldUpdate) {
+        return previous;
+      }
+
+      return latestValues;
+    });
+  }, [videos]);
 
   // Create video mutation
   const createVideoMutation = useMutation({
@@ -383,6 +420,11 @@ export default function AdminVideos() {
     }
   };
 
+  const updateCompletionEmailMutation = useMutation({
+    mutationFn: ({ id, completionEmail }: { id: string; completionEmail: string | null }) =>
+      apiRequest("PATCH", `/api/admin/videos/${id}`, { completionEmail }),
+  });
+
   const handleEditVideo = (video: Video) => {
     setEditingVideo(video);
     setIsVideoDialogOpen(true);
@@ -410,6 +452,95 @@ export default function AdminVideos() {
       title: "Copied to clipboard",
       description: "Share URL has been copied.",
     });
+  };
+
+  const handleShareVideo = async (video: Video) => {
+    const shareUrl = getVideoShareUrl(video.id);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: video.title,
+          text: `Access the training video "${video.title}"`,
+          url: shareUrl,
+        });
+        return;
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") {
+          return;
+        }
+        console.warn("Share cancelled or failed", error);
+      }
+    }
+
+    navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: "Share link copied",
+      description: "Sharing is not supported on this device. The link was copied instead.",
+    });
+  };
+
+  const handleCompletionEmailChange = (videoId: string, value: string) => {
+    setCompletionEmails((previous) => ({
+      ...previous,
+      [videoId]: value,
+    }));
+  };
+
+  const handleCompletionEmailBlur = async (video: Video) => {
+    const rawValue = completionEmails[video.id] ?? "";
+    const trimmedValue = rawValue.trim();
+    const normalizedValue = trimmedValue === "" ? "" : trimmedValue;
+
+    if (normalizedValue) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(normalizedValue)) {
+        toast({
+          title: "Invalid email",
+          description: "Please enter a valid notification email or leave the field blank.",
+          variant: "destructive",
+        });
+        setCompletionEmails((previous) => ({
+          ...previous,
+          [video.id]: video.completionEmail ?? "",
+        }));
+        return;
+      }
+    }
+
+    const previousValue = video.completionEmail ?? "";
+    if (normalizedValue === previousValue) {
+      if (normalizedValue !== rawValue) {
+        setCompletionEmails((previous) => ({
+          ...previous,
+          [video.id]: previousValue,
+        }));
+      }
+      return;
+    }
+
+    try {
+      await updateCompletionEmailMutation.mutateAsync({
+        id: video.id,
+        completionEmail: normalizedValue === "" ? null : normalizedValue,
+      });
+      toast({
+        title: "Notification email saved",
+        description: "Completion notifications will be sent for this video.",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
+    } catch (error) {
+      console.error("Failed to update completion email", error);
+      toast({
+        title: "Error",
+        description: "Failed to save the notification email. Please try again.",
+        variant: "destructive",
+      });
+      setCompletionEmails((previous) => ({
+        ...previous,
+        [video.id]: previousValue,
+      }));
+    }
   };
 
   if (isLoading) {
@@ -557,12 +688,36 @@ export default function AdminVideos() {
                     </Button>
                     <Button
                       size="sm"
+                      onClick={() => handleShareVideo(video)}
+                      className="flex-1"
+                      data-testid={`button-share-${video.id}`}
+                    >
+                      <Share2 className="h-3 w-3 mr-1" />
+                      Share
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleGenerateQR(video)}
                       data-testid={`button-qr-${video.id}`}
                     >
                       <QrCode className="h-3 w-3" />
                     </Button>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    <Label htmlFor={`completion-email-${video.id}`}>Completion notification email</Label>
+                    <Input
+                      id={`completion-email-${video.id}`}
+                      type="email"
+                      value={completionEmails[video.id] ?? ""}
+                      onChange={(event) => handleCompletionEmailChange(video.id, event.target.value)}
+                      onBlur={() => handleCompletionEmailBlur(video)}
+                      placeholder="name@example.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      We’ll notify this address when a viewer finishes the video.
+                    </p>
                   </div>
                 </div>
               </CardContent>
