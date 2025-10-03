@@ -382,12 +382,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/videos", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
-      if (adminUser.role === "SUPERVISOR") {
-        if (!adminUser.companyTag) {
-          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+      const normalizedCompanyTag = adminUser.companyTag?.trim() || null;
+
+      if (adminUser.role !== "SUPER_ADMIN") {
+        if (!normalizedCompanyTag) {
+          return res.status(403).json({ message: "Company assignment required" });
         }
 
-        const videos = await storage.getAllVideos(adminUser.companyTag);
+        const videos = await storage.getAllVideos(normalizedCompanyTag);
         return res.json(videos);
       }
 
@@ -475,12 +477,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/completions", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
-      if (adminUser.role === "SUPERVISOR") {
-        if (!adminUser.companyTag) {
-          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+      const normalizedCompanyTag = adminUser.companyTag?.trim() || null;
+
+      if (adminUser.role !== "SUPER_ADMIN") {
+        if (!normalizedCompanyTag) {
+          return res.status(403).json({ message: "Company assignment required" });
         }
 
-        const completions = await storage.getAllAccessLogs(adminUser.companyTag);
+        const completions = await storage.getAllAccessLogs(normalizedCompanyTag);
         return res.json(completions);
       }
 

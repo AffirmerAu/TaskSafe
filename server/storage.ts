@@ -20,6 +20,20 @@ import {
 import { db } from "./db";
 import { eq, and, desc, count, sum, or, sql } from "drizzle-orm";
 
+const sanitizeCompanyTag = (tag?: string | null): string | null => {
+  if (tag === undefined || tag === null) {
+    return null;
+  }
+
+  const trimmed = tag.trim();
+  return trimmed === "" ? null : trimmed;
+};
+
+const normalizeCompanyTagForComparison = (tag?: string | null): string | null => {
+  const sanitized = sanitizeCompanyTag(tag);
+  return sanitized ? sanitized.toLowerCase() : null;
+};
+
 export interface IStorage {
   // Video methods
   getVideo(id: string): Promise<Video | undefined>;
@@ -82,9 +96,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVideo(insertVideo: InsertVideo): Promise<Video> {
+    const sanitizedCompanyTag = sanitizeCompanyTag(insertVideo.companyTag ?? null);
+    const payload: InsertVideo = {
+      ...insertVideo,
+      companyTag: sanitizedCompanyTag ?? null,
+    };
+
     const [video] = await db
       .insert(videos)
-      .values(insertVideo)
+      .values(payload)
       .returning();
     return video;
   }
@@ -110,9 +130,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAccessLog(accessLog: InsertAccessLog): Promise<AccessLog> {
+    const payload: InsertAccessLog = {
+      ...accessLog,
+      companyTag: sanitizeCompanyTag(accessLog.companyTag ?? null),
+    };
+
     const [log] = await db
       .insert(accessLogs)
-      .values(accessLog)
+      .values(payload)
       .returning();
     return log;
   }
@@ -173,15 +198,28 @@ export class DatabaseStorage implements IStorage {
   async getAllVideos(companyTag?: string): Promise<Video[]> {
     const query = db.select().from(videos);
     if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(videos.createdAt));
+      const normalizedTag = normalizeCompanyTagForComparison(companyTag);
+      if (!normalizedTag) {
+        return [];
+      }
+
+      return await query
+        .where(sql`lower(trim(${videos.companyTag})) = ${normalizedTag}`)
+        .orderBy(desc(videos.createdAt));
     }
     return await query.orderBy(desc(videos.createdAt));
   }
 
   async updateVideo(id: string, video: Partial<InsertVideo>): Promise<Video> {
+    const updates: Partial<InsertVideo> = { ...video };
+
+    if (Object.prototype.hasOwnProperty.call(updates, "companyTag")) {
+      updates.companyTag = sanitizeCompanyTag(updates.companyTag ?? null);
+    }
+
     const [updatedVideo] = await db
       .update(videos)
-      .set(video)
+      .set(updates)
       .where(eq(videos.id, id))
       .returning();
     return updatedVideo;
@@ -211,7 +249,19 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(videos, eq(accessLogs.videoId, videos.id));
 
     if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(accessLogs.accessedAt));
+      const normalizedTag = normalizeCompanyTagForComparison(companyTag);
+      if (!normalizedTag) {
+        return [];
+      }
+
+      return await query
+        .where(
+          or(
+            sql`lower(trim(${videos.companyTag})) = ${normalizedTag}`,
+            sql`lower(trim(${accessLogs.companyTag})) = ${normalizedTag}`,
+          ),
+        )
+        .orderBy(desc(accessLogs.accessedAt));
     }
     return await query.orderBy(desc(accessLogs.accessedAt));
   }
@@ -253,9 +303,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser> {
+    const payload: InsertAdminUser = {
+      ...adminUser,
+      companyTag: sanitizeCompanyTag(adminUser.companyTag ?? null) ?? null,
+    };
+
     const [user] = await db
       .insert(adminUsers)
-      .values(adminUser)
+      .values(payload)
       .returning();
     return user;
   }
@@ -273,9 +328,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAdminUser(id: string, adminUser: Partial<InsertAdminUser>): Promise<AdminUser> {
+    const updates: Partial<InsertAdminUser> = { ...adminUser };
+
+    if (Object.prototype.hasOwnProperty.call(updates, "companyTag")) {
+      updates.companyTag = sanitizeCompanyTag(updates.companyTag ?? null);
+    }
+
     const [updatedUser] = await db
       .update(adminUsers)
-      .set(adminUser)
+      .set(updates)
       .where(eq(adminUsers.id, id))
       .returning();
     return updatedUser;
@@ -294,7 +355,10 @@ export class DatabaseStorage implements IStorage {
     ];
 
     if (companyTag) {
-      conditions.push(eq(adminUsers.companyTag, companyTag));
+      const normalizedTag = normalizeCompanyTagForComparison(companyTag);
+      if (normalizedTag) {
+        conditions.push(sql`lower(trim(${adminUsers.companyTag})) = ${normalizedTag}`);
+      }
     }
 
     return await db.select().from(adminUsers)
@@ -309,8 +373,11 @@ export class DatabaseStorage implements IStorage {
       role: "SUPERVISOR",
     };
 
-    if (supervisor.companyTag) {
-      values.companyTag = supervisor.companyTag;
+    const sanitizedTag = sanitizeCompanyTag(supervisor.companyTag ?? null);
+    if (sanitizedTag) {
+      values.companyTag = sanitizedTag;
+    } else {
+      values.companyTag = null;
     }
 
     const [user] = await db
@@ -334,7 +401,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (supervisor.companyTag !== undefined) {
-      updates.companyTag = supervisor.companyTag;
+      updates.companyTag = sanitizeCompanyTag(supervisor.companyTag ?? null);
     }
 
     const [user] = await db
