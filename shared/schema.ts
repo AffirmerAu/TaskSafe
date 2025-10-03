@@ -16,7 +16,7 @@ export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull(), // 'SUPER_ADMIN' | 'ADMIN'
+  role: text("role").notNull(), // 'SUPER_ADMIN' | 'ADMIN' | 'SUPERVISOR'
   companyTag: text("company_tag"), // null for SUPER_ADMIN
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -143,9 +143,22 @@ export const adminLoginSchema = z.object({
 export const adminCreateUserSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["ADMIN", "SUPER_ADMIN"]),
+  role: z.enum(["ADMIN", "SUPER_ADMIN", "SUPERVISOR"]),
   companyTag: z.string().optional(),
 });
+
+export const supervisorCreateSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  companyTag: z.string().optional(),
+});
+
+export const supervisorUpdateSchema = supervisorCreateSchema.partial().refine(
+  (data) => Object.keys(data).length > 0,
+  {
+    message: "At least one field must be provided",
+  }
+);
 
 export type CompanyTag = typeof companyTags.$inferSelect;
 export type InsertCompanyTag = z.infer<typeof insertCompanyTagSchema>;
@@ -161,3 +174,5 @@ export type RequestAccess = z.infer<typeof requestAccessSchema>;
 export type UpdateProgress = z.infer<typeof updateProgressSchema>;
 export type AdminLogin = z.infer<typeof adminLoginSchema>;
 export type AdminCreateUser = z.infer<typeof adminCreateUserSchema>;
+export type SupervisorCreate = z.infer<typeof supervisorCreateSchema>;
+export type SupervisorUpdate = z.infer<typeof supervisorUpdateSchema>;

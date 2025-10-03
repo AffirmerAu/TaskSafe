@@ -9,10 +9,12 @@ import {
   adminCreateUserSchema,
   insertVideoSchema,
   insertCompanyTagSchema,
+  supervisorCreateSchema,
+  supervisorUpdateSchema,
 } from "@shared/schema";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
-import type { AdminUser } from "@shared/schema";
+import type { AdminUser, SupervisorUpdate } from "@shared/schema";
 
 // Extend Express Session to include admin
 declare module 'express-session' {
@@ -349,8 +351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/videos", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        if (!adminUser.companyTag) {
+          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+        }
+
+        const videos = await storage.getAllVideos(adminUser.companyTag);
+        return res.json(videos);
+      }
+
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-      
+
       const videos = await storage.getAllVideos(companyTag);
       res.json(videos);
 
@@ -435,13 +446,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/completions", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        if (!adminUser.companyTag) {
+          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+        }
+
+        const completions = await storage.getAllAccessLogs(adminUser.companyTag);
+        return res.json(completions);
+      }
+
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-      
+
       const completions = await storage.getAllAccessLogs(companyTag);
       res.json(completions);
 
     } catch (error) {
       console.error("Get completions error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Supervisor management (admin & super admin)
+  app.get("/api/admin/supervisors", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag;
+
+      if (adminUser.role !== "SUPER_ADMIN" && !companyTag) {
+        return res.status(400).json({ message: "Company assignment required" });
+      }
+
+      const supervisors = await storage.getSupervisors(companyTag || undefined);
+      const sanitized = supervisors.map(({ password, ...rest }) => rest);
+      res.json(sanitized);
+
+    } catch (error) {
+      console.error("Get supervisors error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/supervisors", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const supervisorData = supervisorCreateSchema.parse(req.body);
+
+      let companyTag = supervisorData.companyTag;
+
+      if (adminUser.role === "ADMIN") {
+        if (!adminUser.companyTag) {
+          return res.status(400).json({ message: "Company assignment required" });
+        }
+        companyTag = adminUser.companyTag ?? undefined;
+      }
+
+      if (!companyTag) {
+        return res.status(400).json({ message: "Supervisors must be assigned to a company" });
+      }
+
+      const hashedPassword = await bcrypt.hash(supervisorData.password, 12);
+
+      const supervisor = await storage.createSupervisor({
+        email: supervisorData.email,
+        password: hashedPassword,
+        companyTag,
+      });
+
+      const { password: _, ...supervisorWithoutPassword } = supervisor;
+      res.json(supervisorWithoutPassword);
+
+    } catch (error: any) {
+      console.error("Create supervisor error:", error);
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
+  app.patch("/api/admin/supervisors/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const supervisor = await storage.getAdminUserById(id);
+
+      if (!supervisor || supervisor.role !== "SUPERVISOR") {
+        return res.status(404).json({ message: "Supervisor not found" });
+      }
+
+      if (adminUser.role === "ADMIN" && supervisor.companyTag !== adminUser.companyTag) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (adminUser.role === "ADMIN" && !adminUser.companyTag) {
+        return res.status(400).json({ message: "Company assignment required" });
+      }
+
+      const updates = supervisorUpdateSchema.parse(req.body);
+      const updateData: SupervisorUpdate = { ...updates };
+
+      if (updates.password) {
+        updateData.password = await bcrypt.hash(updates.password, 12);
+      }
+
+      let companyTag = updates.companyTag;
+
+      if (adminUser.role === "ADMIN") {
+        companyTag = adminUser.companyTag ?? undefined;
+      } else if (companyTag !== undefined && companyTag.trim() === "") {
+        companyTag = undefined;
+      }
+
+      if (companyTag === undefined && supervisor.companyTag) {
+        companyTag = supervisor.companyTag;
+      }
+
+      const updatedSupervisor = await storage.updateSupervisor(id, {
+        ...updateData,
+        companyTag,
+      });
+
+      const { password: _, ...supervisorWithoutPassword } = updatedSupervisor;
+      res.json(supervisorWithoutPassword);
+
+    } catch (error: any) {
+      console.error("Update supervisor error:", error);
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
+  app.delete("/api/admin/supervisors/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const supervisor = await storage.getAdminUserById(id);
+
+      if (!supervisor || supervisor.role !== "SUPERVISOR") {
+        return res.status(404).json({ message: "Supervisor not found" });
+      }
+
+      if (adminUser.role === "ADMIN" && supervisor.companyTag !== adminUser.companyTag) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (adminUser.role === "ADMIN" && !adminUser.companyTag) {
+        return res.status(400).json({ message: "Company assignment required" });
+      }
+
+      await storage.deleteAdminUser(id);
+      res.json({ message: "Supervisor deleted successfully" });
+
+    } catch (error) {
+      console.error("Delete supervisor error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

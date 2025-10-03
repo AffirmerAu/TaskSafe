@@ -3,22 +3,24 @@ import { useAdmin } from "@/contexts/admin-context";
 import { useLocation, Route, Switch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Shield, 
-  Video, 
-  BarChart3, 
-  Users, 
+import {
+  Shield,
+  Video,
+  BarChart3,
+  Users,
   LogOut,
   PlayCircle,
   TrendingUp,
   Tag,
   Menu,
-  X
+  X,
+  UserCog
 } from "lucide-react";
 import AdminVideos from "@/pages/admin-videos";
 import AdminCompletions from "@/pages/admin-completions";
 import AdminUsers from "@/pages/admin-users";
 import AdminCompanyTags from "@/pages/admin-company-tags";
+import AdminSupervisors from "@/pages/admin-supervisors";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdmin();
@@ -26,12 +28,17 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
+    ...(adminUser?.role === "SUPER_ADMIN"
+      ? [
+          { name: "Admin Users", href: "/admin/users", icon: Users },
+          { name: "Companies", href: "/admin/company-tags", icon: Tag },
+        ]
+      : []),
+    ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN")
+      ? [{ name: "Supervisors", href: "/admin/supervisors", icon: UserCog }]
+      : []),
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
-    ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
-    ] : []),
   ];
 
   const handleLogout = async () => {
@@ -63,7 +70,11 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold text-foreground">TaskSafe Admin</h1>
                 <p className="text-xs text-muted-foreground">
-                  {adminUser?.role === "SUPER_ADMIN" ? "Super Administrator" : "Administrator"}
+                  {adminUser?.role === "SUPER_ADMIN"
+                    ? "Super Administrator"
+                    : adminUser?.role === "SUPERVISOR"
+                      ? "Supervisor"
+                      : "Administrator"}
                 </p>
               </div>
               <div className="sm:hidden">
@@ -144,7 +155,11 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                   <div>
                     <h1 className="text-lg font-bold text-foreground">TaskSafe Admin</h1>
                     <p className="text-xs text-muted-foreground">
-                      {adminUser?.role === "SUPER_ADMIN" ? "Super Administrator" : "Administrator"}
+                      {adminUser?.role === "SUPER_ADMIN"
+                        ? "Super Administrator"
+                        : adminUser?.role === "SUPERVISOR"
+                          ? "Supervisor"
+                          : "Administrator"}
                     </p>
                   </div>
                 </div>
@@ -317,6 +332,9 @@ export default function AdminDashboard() {
         <Route path="/admin" component={AdminDashboardHome} />
         <Route path="/admin/videos" component={AdminVideos} />
         <Route path="/admin/completions" component={AdminCompletions} />
+        {(adminUser.role === "SUPER_ADMIN" || adminUser.role === "ADMIN") && (
+          <Route path="/admin/supervisors" component={AdminSupervisors} />
+        )}
         {adminUser.role === "SUPER_ADMIN" && (
           <Route path="/admin/users" component={AdminUsers} />
         )}
