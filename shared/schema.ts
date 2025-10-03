@@ -16,7 +16,7 @@ export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull(), // 'SUPER_ADMIN' | 'ADMIN'
+  role: text("role").notNull(), // 'SUPER_ADMIN' | 'ADMIN' | 'SUPERVISOR'
   companyTag: text("company_tag"), // null for SUPER_ADMIN
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -104,6 +104,22 @@ export const insertCompanyTagSchema = createInsertSchema(companyTags).omit({
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   id: true,
   createdAt: true,
+}).extend({
+  companyTag: z.preprocess(
+    (value) => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        return trimmed === "" ? null : trimmed;
+      }
+
+      return value;
+    },
+    z.string().min(1).nullable().optional(),
+  ),
 });
 
 export const insertVideoSchema = createInsertSchema(videos).omit({
@@ -140,12 +156,40 @@ export const adminLoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export const adminCreateUserSchema = z.object({
+export const adminRoleEnum = z.enum(["ADMIN", "SUPER_ADMIN", "SUPERVISOR"]);
+
+const adminUserBaseSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["ADMIN", "SUPER_ADMIN"]),
-  companyTag: z.string().optional(),
+  role: adminRoleEnum,
+  companyTag: z.string().nullable().optional(),
 });
+
+export const adminCreateUserSchema = adminUserBaseSchema.superRefine((data, ctx) => {
+  if (data.role === "SUPERVISOR" && (!data.companyTag || data.companyTag.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Supervisors must be assigned to a company",
+      path: ["companyTag"],
+    });
+  }
+});
+
+export const adminUpdateUserSchema = adminUserBaseSchema
+  .partial()
+  .superRefine((data, ctx) => {
+    if (data.role === "SUPERVISOR") {
+      if (!data.companyTag || data.companyTag.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Supervisors must be assigned to a company",
+          path: ["companyTag"],
+        });
+      }
+    }
+  });
+
+export type AdminRole = z.infer<typeof adminRoleEnum>;
 
 export type CompanyTag = typeof companyTags.$inferSelect;
 export type InsertCompanyTag = z.infer<typeof insertCompanyTagSchema>;
@@ -161,3 +205,4 @@ export type RequestAccess = z.infer<typeof requestAccessSchema>;
 export type UpdateProgress = z.infer<typeof updateProgressSchema>;
 export type AdminLogin = z.infer<typeof adminLoginSchema>;
 export type AdminCreateUser = z.infer<typeof adminCreateUserSchema>;
+export type AdminUpdateUser = z.infer<typeof adminUpdateUserSchema>;

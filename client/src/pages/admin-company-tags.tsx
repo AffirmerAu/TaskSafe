@@ -54,14 +54,14 @@ export default function AdminCompanyTags() {
       }).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/company-tags"] });
-      toast({ description: "Company tag created successfully" });
+      toast({ description: "Company created successfully" });
       setShowCreateDialog(false);
       createForm.reset();
     },
     onError: () => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: "Failed to create company tag" 
+        description: "Failed to create company"
       });
     },
   });
@@ -76,15 +76,15 @@ export default function AdminCompanyTags() {
       }).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/company-tags"] });
-      toast({ description: "Company tag updated successfully" });
+      toast({ description: "Company updated successfully" });
       setShowEditDialog(false);
       setEditingTag(null);
       editForm.reset();
     },
     onError: () => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: "Failed to update company tag" 
+        description: "Failed to update company"
       });
     },
   });
@@ -97,12 +97,12 @@ export default function AdminCompanyTags() {
       }).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/company-tags"] });
-      toast({ description: "Company tag deleted successfully" });
+      toast({ description: "Company deleted successfully" });
     },
     onError: () => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: "Failed to delete company tag" 
+        description: "Failed to delete company"
       });
     },
   });
@@ -157,21 +157,21 @@ export default function AdminCompanyTags() {
     <div className="p-6" data-testid="company-tags-page">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-foreground" data-testid="page-title">Company Tags</h2>
+          <h2 className="text-3xl font-bold text-foreground" data-testid="page-title">Companies</h2>
           <p className="text-muted-foreground" data-testid="page-description">
-            Manage company tags for multi-tenant access control and organization
+            Manage companies for multi-tenant access control and organization
           </p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-tag">
               <Plus className="h-4 w-4 mr-2" />
-              Create Tag
+              Create Company
             </Button>
           </DialogTrigger>
           <DialogContent data-testid="dialog-create-tag">
             <DialogHeader>
-              <DialogTitle>Create Company Tag</DialogTitle>
+              <DialogTitle>Create Company</DialogTitle>
             </DialogHeader>
             <Form {...createForm}>
               <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
@@ -180,10 +180,10 @@ export default function AdminCompanyTags() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tag Name</FormLabel>
+                      <FormLabel>Company Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="e.g., acme-corp" 
+                        <Input
+                          placeholder="e.g., Acme Corporation"
                           {...field} 
                           data-testid="input-tag-name"
                         />
@@ -200,7 +200,7 @@ export default function AdminCompanyTags() {
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Brief description of this company tag..."
+                          placeholder="Brief description of this company..."
                           {...field}
                           value={field.value || ""}
                           data-testid="input-tag-description"
@@ -234,7 +234,7 @@ export default function AdminCompanyTags() {
                     disabled={createMutation.isPending}
                     data-testid="button-submit-create"
                   >
-                    {createMutation.isPending ? "Creating..." : "Create Tag"}
+                    {createMutation.isPending ? "Creating..." : "Create Company"}
                   </Button>
                   <Button 
                     type="button" 
@@ -256,13 +256,13 @@ export default function AdminCompanyTags() {
           <Card data-testid="empty-state">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Tag className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Company Tags</h3>
+              <h3 className="text-lg font-semibold mb-2">No Companies</h3>
               <p className="text-muted-foreground text-center mb-4">
-                Create your first company tag to enable multi-tenant access control
+                Create your first company to enable multi-tenant access control
               </p>
               <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-tag">
                 <Plus className="h-4 w-4 mr-2" />
-                Create First Tag
+                Create First Company
               </Button>
             </CardContent>
           </Card>
@@ -335,7 +335,7 @@ export default function AdminCompanyTags() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent data-testid="dialog-edit-tag">
           <DialogHeader>
-            <DialogTitle>Edit Company Tag</DialogTitle>
+            <DialogTitle>Edit Company</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
@@ -344,11 +344,11 @@ export default function AdminCompanyTags() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tag Name</FormLabel>
+                    <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., acme-corp" 
-                        {...field} 
+                      <Input
+                        placeholder="e.g., Acme Corporation"
+                        {...field}
                         data-testid="input-edit-tag-name"
                       />
                     </FormControl>
@@ -364,7 +364,7 @@ export default function AdminCompanyTags() {
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Brief description of this company tag..."
+                        placeholder="Brief description of this company..."
                         {...field}
                         value={field.value || ""}
                         data-testid="input-edit-tag-description"
@@ -398,7 +398,7 @@ export default function AdminCompanyTags() {
                   disabled={updateMutation.isPending}
                   data-testid="button-submit-edit"
                 >
-                  {updateMutation.isPending ? "Updating..." : "Update Tag"}
+                  {updateMutation.isPending ? "Updating..." : "Update Company"}
                 </Button>
                 <Button 
                   type="button" 
