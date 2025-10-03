@@ -173,7 +173,10 @@ export class DatabaseStorage implements IStorage {
   async getAllVideos(companyTag?: string): Promise<Video[]> {
     const query = db.select().from(videos);
     if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(videos.createdAt));
+      const normalizedTag = companyTag.trim();
+      return await query
+        .where(eq(videos.companyTag, normalizedTag))
+        .orderBy(desc(videos.createdAt));
     }
     return await query.orderBy(desc(videos.createdAt));
   }
@@ -211,7 +214,15 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(videos, eq(accessLogs.videoId, videos.id));
 
     if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(accessLogs.accessedAt));
+      const normalizedTag = companyTag.trim();
+      return await query
+        .where(
+          or(
+            eq(videos.companyTag, normalizedTag),
+            eq(accessLogs.companyTag, normalizedTag),
+          ),
+        )
+        .orderBy(desc(accessLogs.accessedAt));
     }
     return await query.orderBy(desc(accessLogs.accessedAt));
   }
