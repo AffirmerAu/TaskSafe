@@ -5,7 +5,7 @@ import VideoThumbnail from "@/components/video-thumbnail";
 import EmailForm from "@/components/email-form";
 import EmailSentModal from "@/components/email-sent-modal";
 import { Button } from "@/components/ui/button";
-import { Shield, Lock, CheckCircle, LogIn, ArrowLeft } from "lucide-react";
+import { Shield, Lock, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Video {
@@ -113,10 +113,9 @@ export default function VideoRequest() {
                 The requested training video could not be found or is no longer available.
               </p>
               <Link href="/">
-                <Button data-testid="button-back-home-error">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Video Selection
-                </Button>
+                <span className="text-sm font-medium text-primary" data-testid="link-back-home-error">
+                  Return to home
+                </span>
               </Link>
             </div>
           </div>
@@ -131,16 +130,6 @@ export default function VideoRequest() {
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="max-w-4xl mx-auto">
-          {/* Back to Video Selection */}
-          <div className="mb-8">
-            <Link href="/">
-              <Button variant="outline" className="mb-4" data-testid="button-back-home">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Video Selection
-              </Button>
-            </Link>
-          </div>
-
           {/* Video Section - Moved to Top */}
           <div className="mb-12">
             <div className="max-w-2xl mx-auto">
