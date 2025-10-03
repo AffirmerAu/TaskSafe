@@ -14,7 +14,8 @@ import {
   Tag,
   Menu,
   X,
-  UserCog
+  UserCog,
+  Home
 } from "lucide-react";
 import AdminVideos from "@/pages/admin-videos";
 import AdminCompletions from "@/pages/admin-completions";
@@ -28,15 +29,18 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
+    { name: "Home", href: "/admin", icon: Home },
+    ...(adminUser?.role === "SUPER_ADMIN"
+      ? [
+          { name: "Admin Users", href: "/admin/users", icon: Users },
+          { name: "Companies", href: "/admin/company-tags", icon: Tag },
+        ]
+      : []),
+    ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN")
+      ? [{ name: "Supervisors", href: "/admin/supervisors", icon: UserCog }]
+      : []),
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
-    ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN") ? [
-      { name: "Supervisors", href: "/admin/supervisors", icon: UserCog },
-    ] : []),
-    ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
-    ] : []),
   ];
 
   const handleLogout = async () => {

@@ -39,10 +39,12 @@ interface FilterState {
   dateFrom: string;
   dateTo: string;
   videoId: string;
-  emailDomain: string;
+  companyTag: string;
   completionStatus: string;
   searchTerm: string;
 }
+
+const UNASSIGNED_TAG = "__UNASSIGNED__";
 
 export default function AdminCompletions() {
   const { adminUser } = useAdmin();
@@ -51,7 +53,7 @@ export default function AdminCompletions() {
     dateFrom: "",
     dateTo: "",
     videoId: "",
-    emailDomain: "",
+    companyTag: "",
     completionStatus: "",
     searchTerm: "",
   });
@@ -68,6 +70,23 @@ export default function AdminCompletions() {
   });
 
   // Filter and search logic
+  const availableCompanyTags = useMemo(() => {
+    const tagSet = new Set<string>();
+
+    completions.forEach((completion) => {
+      tagSet.add(completion.companyTag ?? UNASSIGNED_TAG);
+    });
+
+    const tags = Array.from(tagSet)
+      .map((tag) => ({
+        value: tag,
+        label: tag === UNASSIGNED_TAG ? "Unassigned" : tag,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return tags;
+  }, [completions]);
+
   const filteredCompletions = useMemo(() => {
     let filtered = completions;
 
@@ -87,13 +106,9 @@ export default function AdminCompletions() {
       filtered = filtered.filter(c => c.videoId === filters.videoId);
     }
 
-    // Email domain filter
-    if (filters.emailDomain) {
-      const domain = filters.emailDomain.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.email.toLowerCase().includes(`@${domain}`) || 
-        c.email.toLowerCase().endsWith(domain)
-      );
+    // Company tag filter
+    if (filters.companyTag && filters.companyTag !== "all") {
+      filtered = filtered.filter(c => (c.companyTag ?? UNASSIGNED_TAG) === filters.companyTag);
     }
 
     // Completion status filter
@@ -175,7 +190,7 @@ export default function AdminCompletions() {
       dateFrom: "",
       dateTo: "",
       videoId: "",
-      emailDomain: "",
+      companyTag: "",
       completionStatus: "",
       searchTerm: "",
     });
@@ -301,14 +316,23 @@ export default function AdminCompletions() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="emailDomain">Email Domain</Label>
-                <Input
-                  id="emailDomain"
-                  placeholder="e.g., company.com"
-                  value={filters.emailDomain}
-                  onChange={(e) => setFilters(prev => ({ ...prev, emailDomain: e.target.value }))}
-                  data-testid="input-email-domain"
-                />
+                <Label htmlFor="companyFilter">Company</Label>
+                <Select
+                  value={filters.companyTag}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, companyTag: value }))}
+                >
+                  <SelectTrigger id="companyFilter" data-testid="select-company-filter">
+                    <SelectValue placeholder="All companies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All companies</SelectItem>
+                    {availableCompanyTags.map((tag) => (
+                      <SelectItem key={tag.value} value={tag.value}>
+                        {tag.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
@@ -396,7 +420,7 @@ export default function AdminCompletions() {
               <span className="text-sm font-medium">Companies</span>
             </div>
             <div className="text-2xl font-bold">
-              {new Set(filteredCompletions.map(c => getEmailDomain(c.email))).size}
+              {new Set(filteredCompletions.map(c => c.companyTag ?? UNASSIGNED_TAG)).size}
             </div>
           </CardContent>
         </Card>

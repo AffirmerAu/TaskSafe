@@ -351,8 +351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/videos", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        if (!adminUser.companyTag) {
+          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+        }
+
+        const videos = await storage.getAllVideos(adminUser.companyTag);
+        return res.json(videos);
+      }
+
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-      
+
       const videos = await storage.getAllVideos(companyTag);
       res.json(videos);
 
@@ -437,6 +446,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/completions", requireAdmin, async (req: Request, res: Response) => {
     try {
       const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        if (!adminUser.companyTag) {
+          return res.status(403).json({ message: "Supervisor must be assigned to a company" });
+        }
+
+        const completions = await storage.getAllAccessLogs(adminUser.companyTag);
+        return res.json(completions);
+      }
+
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
 
       const completions = await storage.getAllAccessLogs(companyTag);
