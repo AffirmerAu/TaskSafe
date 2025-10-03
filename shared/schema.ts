@@ -31,6 +31,7 @@ export const videos = pgTable("videos", {
   duration: text("duration").notNull(), // e.g., "12:34"
   category: text("category").notNull(),
   companyTag: text("company_tag"), // for role-based access
+  completionEmail: text("completion_email"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
@@ -58,6 +59,7 @@ export const accessLogs = pgTable("access_logs", {
   companyTag: text("company_tag"), // derived from email domain or video
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  completionNotified: boolean("completion_notified").notNull().default(false),
 });
 
 export const videosRelations = relations(videos, ({ many }) => ({
@@ -109,6 +111,22 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
 export const insertVideoSchema = createInsertSchema(videos).omit({
   id: true,
   createdAt: true,
+}).extend({
+  completionEmail: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value ?? null;
+      }
+
+      const trimmed = value.trim();
+      return trimmed === "" ? null : trimmed;
+    },
+    z
+      .string()
+      .email("Please enter a valid email address")
+      .nullable()
+      .optional(),
+  ),
 });
 
 export const insertMagicLinkSchema = createInsertSchema(magicLinks).omit({

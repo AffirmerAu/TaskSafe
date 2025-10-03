@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { sendEmail, generateMagicLinkEmail } from "./services/email";
+import { sendEmail, generateMagicLinkEmail, generateCompletionNotificationEmail } from "./services/email";
 import {
   requestAccessSchema,
   updateProgressSchema,
@@ -175,10 +175,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates = updateProgressSchema.parse(req.body);
       const normalizedCompletion = Math.min(100, updates.completionPercentage >= 95 ? 100 : updates.completionPercentage);
 
+      const existingLog = await storage.getAccessLogById(accessLogId);
+      if (!existingLog) {
+        return res.status(404).json({ message: "Access log not found" });
+      }
+
       await storage.updateAccessLog(accessLogId, {
         ...updates,
         completionPercentage: normalizedCompletion,
       });
+
+      if (
+        normalizedCompletion === 100 &&
+        !existingLog.completionNotified &&
+        (existingLog.completionPercentage ?? 0) < 100
+      ) {
+        const video = await storage.getVideo(existingLog.videoId);
+
+        if (video?.completionEmail) {
+          const emailParams = generateCompletionNotificationEmail({
+            to: video.completionEmail,
+            viewerEmail: existingLog.email,
+            viewerName: existingLog.userName,
+            videoTitle: video.title,
+            completedAt: new Date(),
+          });
+
+          const emailSent = await sendEmail(emailParams);
+
+          if (emailSent) {
+            await storage.markAccessLogCompletionNotified(accessLogId);
+          } else {
+            console.error("Failed to send completion notification email for access log", accessLogId);
+          }
+        }
+      }
 
       res.json({ message: "Progress updated successfully" });
 
@@ -360,9 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(videos);
       }
 
-      const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-
-      const videos = await storage.getAllVideos(companyTag);
+      const videos = await storage.getAllVideos();
       res.json(videos);
 
     } catch (error) {
@@ -404,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Video not found" });
       }
       
-      if (adminUser.role !== "SUPER_ADMIN" && existingVideo.companyTag !== adminUser.companyTag) {
+      if (adminUser.role === "SUPERVISOR" && existingVideo.companyTag !== adminUser.companyTag) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -429,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Video not found" });
       }
       
-      if (adminUser.role !== "SUPER_ADMIN" && existingVideo.companyTag !== adminUser.companyTag) {
+      if (adminUser.role === "SUPERVISOR" && existingVideo.companyTag !== adminUser.companyTag) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -455,9 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(completions);
       }
 
-      const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-
-      const completions = await storage.getAllAccessLogs(companyTag);
+      const completions = await storage.getAllAccessLogs();
       res.json(completions);
 
     } catch (error) {

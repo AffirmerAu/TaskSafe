@@ -37,6 +37,7 @@ export interface IStorage {
   // Access log methods
   createAccessLog(accessLog: InsertAccessLog): Promise<AccessLog>;
   updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void>;
+  markAccessLogCompletionNotified(id: string): Promise<void>;
   getAccessLogsByVideo(videoId: string): Promise<AccessLog[]>;
   getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null; videoDuration: string | null; videoCategory: string | null }) | undefined>;
   getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]>;
@@ -131,6 +132,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(accessLogs.id, id));
   }
 
+  async markAccessLogCompletionNotified(id: string): Promise<void> {
+    await db
+      .update(accessLogs)
+      .set({ completionNotified: true })
+      .where(eq(accessLogs.id, id));
+  }
+
   async getAccessLogsByVideo(videoId: string): Promise<AccessLog[]> {
     return await db.select().from(accessLogs)
       .where(eq(accessLogs.videoId, videoId))
@@ -150,6 +158,7 @@ export class DatabaseStorage implements IStorage {
       companyTag: accessLogs.companyTag,
       ipAddress: accessLogs.ipAddress,
       userAgent: accessLogs.userAgent,
+      completionNotified: accessLogs.completionNotified,
       videoTitle: videos.title,
       videoDuration: videos.duration,
       videoCategory: videos.category,
@@ -195,6 +204,7 @@ export class DatabaseStorage implements IStorage {
       companyTag: accessLogs.companyTag,
       ipAddress: accessLogs.ipAddress,
       userAgent: accessLogs.userAgent,
+      completionNotified: accessLogs.completionNotified,
       videoTitle: videos.title,
     })
     .from(accessLogs)
