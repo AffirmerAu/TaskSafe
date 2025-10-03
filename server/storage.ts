@@ -37,6 +37,7 @@ export interface IStorage {
   // Access log methods
   createAccessLog(accessLog: InsertAccessLog): Promise<AccessLog>;
   updateAccessLog(id: string, updates: { watchDuration?: number; completionPercentage?: number }): Promise<void>;
+  markAccessLogCompletionNotified(id: string): Promise<void>;
   getAccessLogsByVideo(videoId: string): Promise<AccessLog[]>;
   getAccessLogById(id: string): Promise<(AccessLog & { videoTitle: string | null; videoDuration: string | null; videoCategory: string | null }) | undefined>;
   getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]>;
@@ -131,6 +132,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(accessLogs.id, id));
   }
 
+  async markAccessLogCompletionNotified(id: string): Promise<void> {
+    await db
+      .update(accessLogs)
+      .set({ completionNotified: true })
+      .where(eq(accessLogs.id, id));
+  }
+
   async getAccessLogsByVideo(videoId: string): Promise<AccessLog[]> {
     return await db.select().from(accessLogs)
       .where(eq(accessLogs.videoId, videoId))
@@ -150,6 +158,7 @@ export class DatabaseStorage implements IStorage {
       companyTag: accessLogs.companyTag,
       ipAddress: accessLogs.ipAddress,
       userAgent: accessLogs.userAgent,
+      completionNotified: accessLogs.completionNotified,
       videoTitle: videos.title,
       videoDuration: videos.duration,
       videoCategory: videos.category,
@@ -162,11 +171,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVideos(companyTag?: string): Promise<Video[]> {
-    const query = db.select().from(videos);
-    if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(videos.createdAt));
+    const normalizedTag = companyTag?.trim();
+
+    if (normalizedTag) {
+      return await db.select().from(videos)
+        .where(eq(videos.companyTag, normalizedTag))
+        .orderBy(desc(videos.createdAt));
     }
-    return await query.orderBy(desc(videos.createdAt));
+
+    return await db.select().from(videos)
+      .orderBy(desc(videos.createdAt));
   }
 
   async updateVideo(id: string, video: Partial<InsertVideo>): Promise<Video> {
@@ -183,6 +197,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]> {
+    const normalizedTag = companyTag?.trim();
+
     const query = db.select({
       id: accessLogs.id,
       magicLinkId: accessLogs.magicLinkId,
@@ -195,13 +211,21 @@ export class DatabaseStorage implements IStorage {
       companyTag: accessLogs.companyTag,
       ipAddress: accessLogs.ipAddress,
       userAgent: accessLogs.userAgent,
+      completionNotified: accessLogs.completionNotified,
       videoTitle: videos.title,
     })
     .from(accessLogs)
     .leftJoin(videos, eq(accessLogs.videoId, videos.id));
 
-    if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(accessLogs.accessedAt));
+    if (normalizedTag) {
+      return await query
+        .where(
+          or(
+            eq(videos.companyTag, normalizedTag),
+            eq(accessLogs.companyTag, normalizedTag),
+          )
+        )
+        .orderBy(desc(accessLogs.accessedAt));
     }
     return await query.orderBy(desc(accessLogs.accessedAt));
   }

@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useAdmin } from "@/contexts/admin-context";
 import { useLocation, Route, Switch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Shield,
-  Video,
+  Video as VideoIcon,
   BarChart3,
   Users,
   LogOut,
@@ -17,6 +18,15 @@ import {
   UserCog,
   Home,
 } from "lucide-react";
+import type { Video } from "@shared/schema";
+
+type CompletionSummary = {
+  id: string;
+  completionPercentage: number;
+  accessedAt: string;
+  videoId: string;
+  companyTag?: string | null;
+};
 import AdminVideos from "@/pages/admin-videos";
 import AdminCompletions from "@/pages/admin-completions";
 import AdminUsers from "@/pages/admin-users";
@@ -39,7 +49,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN")
       ? [{ name: "Supervisors", href: "/admin/supervisors", icon: UserCog }]
       : []),
-    { name: "Videos", href: "/admin/videos", icon: Video },
+    { name: "Videos", href: "/admin/videos", icon: VideoIcon },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
   ];
 
@@ -222,6 +232,62 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
 function AdminDashboardHome() {
   const { adminUser } = useAdmin();
+  const { data: videos = [], isLoading: isLoadingVideos } = useQuery<Video[]>({
+    queryKey: ["/api/admin/videos"],
+    refetchInterval: 30000,
+  });
+  const { data: completions = [], isLoading: isLoadingCompletions } = useQuery<CompletionSummary[]>({
+    queryKey: ["/api/admin/completions"],
+    refetchInterval: 30000,
+  });
+
+  const scopedVideos = useMemo(() => {
+    if (adminUser?.role === "SUPERVISOR") {
+      const supervisorTag = adminUser.companyTag?.trim();
+
+      if (supervisorTag) {
+        return videos.filter((video) => video.companyTag?.trim() === supervisorTag);
+      }
+
+      return [];
+    }
+
+    return videos;
+  }, [adminUser, videos]);
+
+  const scopedCompletions = useMemo(() => {
+    if (adminUser?.role === "SUPERVISOR") {
+      const supervisorTag = adminUser.companyTag?.trim();
+
+      if (supervisorTag) {
+        return completions.filter((completion) => completion.companyTag?.trim() === supervisorTag);
+      }
+
+      return [];
+    }
+
+    return completions;
+  }, [adminUser, completions]);
+
+  const stats = useMemo(() => {
+    const totalVideos = scopedVideos.length;
+    const totalViews = scopedCompletions.length;
+    const totalCompletion = scopedCompletions.reduce((sum, record) => sum + (record.completionPercentage ?? 0), 0);
+    const averageCompletion = totalViews > 0 ? Math.round(totalCompletion / totalViews) : 0;
+    const completedRecords = scopedCompletions.filter(record => (record.completionPercentage ?? 0) >= 100);
+    const completedCount = completedRecords.length;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentViews = scopedCompletions.filter(record => new Date(record.accessedAt) >= sevenDaysAgo).length;
+
+    return {
+      totalVideos,
+      totalViews,
+      averageCompletion,
+      completedCount,
+      recentViews,
+    };
+  }, [scopedVideos, scopedCompletions]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -239,7 +305,9 @@ function AdminDashboardHome() {
             <PlayCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">
+              {isLoadingVideos ? <span className="text-muted-foreground">...</span> : stats.totalVideos.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Videos in your library
             </p>
@@ -252,9 +320,16 @@ function AdminDashboardHome() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">
+              {isLoadingCompletions ? <span className="text-muted-foreground">...</span> : stats.totalViews.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               All-time video views
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoadingCompletions
+                ? "Gathering recent activity..."
+                : `${stats.recentViews.toLocaleString()} in the last 7 days`}
             </p>
           </CardContent>
         </Card>
@@ -265,9 +340,16 @@ function AdminDashboardHome() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">
+              {isLoadingCompletions ? <span className="text-muted-foreground">...</span> : `${stats.averageCompletion}%`}
+            </div>
             <p className="text-xs text-muted-foreground">
               Average completion rate
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoadingCompletions
+                ? "Tracking completions..."
+                : `${stats.completedCount.toLocaleString()} fully completed`}
             </p>
           </CardContent>
         </Card>
@@ -283,7 +365,7 @@ function AdminDashboardHome() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button variant="outline" className="justify-start">
-              <Video className="h-4 w-4 mr-2" />
+              <VideoIcon className="h-4 w-4 mr-2" />
               Manage Videos
             </Button>
             <Button variant="outline" className="justify-start">

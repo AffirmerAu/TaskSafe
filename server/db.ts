@@ -37,6 +37,26 @@ export async function ensureDatabaseSchema(): Promise<void> {
       await client.query("ALTER TABLE company_tags ADD COLUMN logo_url text");
       console.log("✅ Added logo_url column to company_tags table");
     }
+
+    const { rows: completionEmailColumn } = await client.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'videos' AND column_name = 'completion_email'",
+    );
+
+    if (completionEmailColumn.length === 0) {
+      console.warn("⚠️ Missing completion_email column on videos. Attempting to add it automatically...");
+      await client.query("ALTER TABLE videos ADD COLUMN completion_email text");
+      console.log("✅ Added completion_email column to videos table");
+    }
+
+    const { rows: completionNotifiedColumn } = await client.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'access_logs' AND column_name = 'completion_notified'",
+    );
+
+    if (completionNotifiedColumn.length === 0) {
+      console.warn("⚠️ Missing completion_notified column on access_logs. Attempting to add it automatically...");
+      await client.query("ALTER TABLE access_logs ADD COLUMN completion_notified boolean NOT NULL DEFAULT false");
+      console.log("✅ Added completion_notified column to access_logs table");
+    }
   } catch (error) {
     console.error("❌ Failed to ensure database schema:", error);
     throw error;
