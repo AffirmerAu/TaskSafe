@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { type CompanyTag } from "@shared/schema";
 import { 
   DownloadIcon, 
   FilterIcon, 
@@ -39,7 +40,7 @@ interface FilterState {
   dateFrom: string;
   dateTo: string;
   videoId: string;
-  emailDomain: string;
+  companyTag: string;
   completionStatus: string;
   searchTerm: string;
 }
@@ -51,21 +52,69 @@ export default function AdminCompletions() {
     dateFrom: "",
     dateTo: "",
     videoId: "",
-    emailDomain: "",
+    companyTag: "all",
     completionStatus: "",
     searchTerm: "",
   });
   const [showFilters, setShowFilters] = useState(false);
+
+  const isSuperAdmin = adminUser?.role === "SUPER_ADMIN";
+  const isSupervisor = adminUser?.role === "SUPERVISOR";
+  const supervisorCompanyTag = isSupervisor ? adminUser?.companyTag ?? null : null;
 
   // Fetch completion data
   const { data: completions = [], isLoading } = useQuery<CompletionRecord[]>({
     queryKey: ["/api/admin/completions"],
   });
 
+  const { data: companyTags = [] } = useQuery<CompanyTag[]>({
+    queryKey: ["/api/admin/company-tags"],
+    enabled: isSuperAdmin,
+  });
+
   // Fetch videos for filter dropdown
   const { data: videos = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/videos"],
   });
+
+  const derivedCompanyTags = useMemo(() => {
+    const tags = new Set<string>();
+    for (const completion of completions) {
+      if (completion.companyTag) {
+        tags.add(completion.companyTag);
+      }
+    }
+    return Array.from(tags).sort((a, b) => a.localeCompare(b));
+  }, [completions]);
+
+  const hasUnassignedCompletions = useMemo(
+    () => completions.some(completion => !completion.companyTag),
+    [completions],
+  );
+
+  const availableCompanyTags = useMemo(() => {
+    if (isSuperAdmin) {
+      const superAdminTags = companyTags.map(tag => tag.name);
+      return Array.from(new Set([...superAdminTags, ...derivedCompanyTags])).sort((a, b) =>
+        a.localeCompare(b),
+      );
+    }
+    return derivedCompanyTags;
+  }, [companyTags, derivedCompanyTags, isSuperAdmin]);
+
+  const companyFilterOptions = useMemo(
+    () => [
+      ...availableCompanyTags.map(tag => ({ value: tag, label: tag })),
+      ...(hasUnassignedCompletions
+        ? [{ value: "__unassigned__", label: "Unassigned" }]
+        : []),
+    ],
+    [availableCompanyTags, hasUnassignedCompletions],
+  );
+
+  const canFilterByCompany = adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN";
+
+  const formatCompanyTag = (tag?: string | null) => tag ?? "Unassigned";
 
   // Filter and search logic
   const filteredCompletions = useMemo(() => {
@@ -87,27 +136,31 @@ export default function AdminCompletions() {
       filtered = filtered.filter(c => c.videoId === filters.videoId);
     }
 
-    // Email domain filter
-    if (filters.emailDomain) {
-      const domain = filters.emailDomain.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.email.toLowerCase().includes(`@${domain}`) || 
-        c.email.toLowerCase().endsWith(domain)
-      );
+    // Company tag filter
+    if (filters.companyTag && filters.companyTag !== "all") {
+      if (filters.companyTag === "__unassigned__") {
+        filtered = filtered.filter(c => !c.companyTag);
+      } else {
+        filtered = filtered.filter(c => c.companyTag === filters.companyTag);
+      }
     }
 
     // Completion status filter
     if (filters.completionStatus && filters.completionStatus !== "all") {
       const isCompleted = filters.completionStatus === "completed";
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         isCompleted ? c.completionPercentage >= 100 : c.completionPercentage < 100
       );
+    }
+
+    if (supervisorCompanyTag) {
+      filtered = filtered.filter(c => c.companyTag === supervisorCompanyTag);
     }
 
     // Search term filter
     if (filters.searchTerm) {
       const term = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         c.email.toLowerCase().includes(term) ||
         c.videoTitle.toLowerCase().includes(term) ||
         (c.companyTag && c.companyTag.toLowerCase().includes(term))
@@ -115,7 +168,7 @@ export default function AdminCompletions() {
     }
 
     return filtered.sort((a, b) => new Date(b.accessedAt).getTime() - new Date(a.accessedAt).getTime());
-  }, [completions, filters]);
+  }, [completions, filters, supervisorCompanyTag]);
 
   // Export to CSV
   const exportToCSV = () => {
@@ -143,7 +196,7 @@ export default function AdminCompletions() {
       format(new Date(record.accessedAt), "yyyy-MM-dd HH:mm:ss"),
       record.email,
       record.videoTitle,
-      record.companyTag || "",
+      formatCompanyTag(record.companyTag),
       Math.round(record.watchDuration / 60 * 100) / 100,
       record.completionPercentage,
       record.completionPercentage >= 100 ? "Yes" : "No",
@@ -175,7 +228,7 @@ export default function AdminCompletions() {
       dateFrom: "",
       dateTo: "",
       videoId: "",
-      emailDomain: "",
+      companyTag: "all",
       completionStatus: "",
       searchTerm: "",
     });
@@ -300,16 +353,27 @@ export default function AdminCompletions() {
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="emailDomain">Email Domain</Label>
-                <Input
-                  id="emailDomain"
-                  placeholder="e.g., company.com"
-                  value={filters.emailDomain}
-                  onChange={(e) => setFilters(prev => ({ ...prev, emailDomain: e.target.value }))}
-                  data-testid="input-email-domain"
-                />
-              </div>
+              {canFilterByCompany && (
+                <div className="space-y-2">
+                  <Label htmlFor="companyTag">Company</Label>
+                  <Select
+                    value={filters.companyTag}
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, companyTag: value }))}
+                  >
+                    <SelectTrigger id="companyTag" data-testid="select-company-filter">
+                      <SelectValue placeholder="All companies" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All companies</SelectItem>
+                      {companyFilterOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="completionStatus">Completion Status</Label>
@@ -396,7 +460,7 @@ export default function AdminCompletions() {
               <span className="text-sm font-medium">Companies</span>
             </div>
             <div className="text-2xl font-bold">
-              {new Set(filteredCompletions.map(c => getEmailDomain(c.email))).size}
+              {new Set(filteredCompletions.map(c => formatCompanyTag(c.companyTag))).size}
             </div>
           </CardContent>
         </Card>
@@ -455,11 +519,7 @@ export default function AdminCompletions() {
                         </div>
                       </td>
                       <td className="p-4" data-testid={`company-${record.id}`}>
-                        {record.companyTag ? (
-                          <Badge variant="outline">{record.companyTag}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
+                        <Badge variant="outline">{formatCompanyTag(record.companyTag)}</Badge>
                       </td>
                       <td className="p-4" data-testid={`duration-${record.id}`}>
                         <div className="text-sm">{formatDuration(record.watchDuration)}</div>
