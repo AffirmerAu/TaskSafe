@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/admin-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,10 +23,12 @@ import {
 } from "lucide-react";
 import type { AdminUser, CompanyTag } from "@shared/schema";
 
+type UserRoleOption = "SUPER_ADMIN" | "SUPERVISOR";
+
 interface UserFormData {
   email: string;
-  password: string;
-  role: "ADMIN" | "SUPER_ADMIN";
+  password?: string;
+  role: UserRoleOption;
   companyTag?: string;
 }
 
@@ -35,8 +37,8 @@ function UserDialog({
   isOpen, 
   onClose, 
   onSave 
-}: { 
-  user?: Omit<AdminUser, 'password'>; 
+}: {
+  user?: AdminUser;
   isOpen: boolean; 
   onClose: () => void; 
   onSave: (data: UserFormData) => void;
@@ -45,12 +47,22 @@ function UserDialog({
   const { data: companyTags = [] } = useQuery<CompanyTag[]>({
     queryKey: ["/api/admin/company-tags"],
   });
+  const initialRole: UserRoleOption = user?.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "SUPERVISOR";
   const [formData, setFormData] = useState<UserFormData>({
     email: user?.email || "",
     password: "",
-    role: user?.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN",
+    role: initialRole,
     companyTag: user?.companyTag ?? "",
   });
+
+  useEffect(() => {
+    setFormData({
+      email: user?.email || "",
+      password: "",
+      role: user?.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "SUPERVISOR",
+      companyTag: user?.companyTag ?? "",
+    });
+  }, [user, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,20 +115,20 @@ function UserDialog({
             <Label htmlFor="role">Role</Label>
             <Select
               value={formData.role}
-              onValueChange={(value: "ADMIN" | "SUPER_ADMIN") => handleChange("role", value)}
+              onValueChange={(value: UserRoleOption) => handleChange("role", value)}
             >
               <SelectTrigger data-testid="select-user-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                <SelectItem value="SUPER_ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="companyTag">Company Tag (for ADMINs)</Label>
+            <Label htmlFor="companyTag">Company (for Supervisors)</Label>
             {companyTags.length > 0 ? (
               <Select
                 value={formData.companyTag || "none"}
@@ -128,7 +140,7 @@ function UserDialog({
                   <SelectValue placeholder="Select a company tag" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No company tag</SelectItem>
+                  <SelectItem value="none">No company (all companies)</SelectItem>
                   {companyTags.map((tag) => (
                     <SelectItem key={tag.id} value={tag.name}>
                       {tag.name}
@@ -146,9 +158,9 @@ function UserDialog({
                 data-testid="input-user-company-tag"
               />
             )}
-            {formData.role === "ADMIN" && (
+            {formData.role === "SUPERVISOR" && (
               <p className="text-xs text-muted-foreground">
-                Admins will only see videos and completions for this company tag
+                Supervisors will only see videos and completions for their assigned company
               </p>
             )}
             {formData.role === "SUPER_ADMIN" && (
@@ -176,16 +188,16 @@ export default function AdminUsers() {
   const { adminUser } = useAdmin();
   const { toast } = useToast();
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<Omit<AdminUser, 'password'> | undefined>();
+  const [editingUser, setEditingUser] = useState<AdminUser | undefined>();
 
   // Only SUPER_ADMINs can access this page
   if (adminUser?.role !== "SUPER_ADMIN") {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Users</h2>
+          <h2 className="text-3xl font-bold text-foreground">Team Members</h2>
           <p className="text-muted-foreground">
-            Manage admin users and company assignments
+            Manage admins, supervisors and company assignments
           </p>
         </div>
         
@@ -202,8 +214,8 @@ export default function AdminUsers() {
     );
   }
 
-  // Fetch admin users
-  const { data: users = [], isLoading } = useQuery<Omit<AdminUser, 'password'>[]>({
+  // Fetch team members
+  const { data: users = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
   });
 
@@ -214,8 +226,8 @@ export default function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setIsUserDialogOpen(false);
       toast({
-        title: "User Created",
-        description: "The admin user has been created successfully.",
+        title: "Team Member Created",
+        description: "The team member has been created successfully.",
       });
     },
     onError: (error: any) => {
@@ -236,8 +248,8 @@ export default function AdminUsers() {
       setIsUserDialogOpen(false);
       setEditingUser(undefined);
       toast({
-        title: "User Updated",
-        description: "The admin user has been updated successfully.",
+        title: "Team Member Updated",
+        description: "The team member has been updated successfully.",
       });
     },
     onError: (error: any) => {
@@ -255,8 +267,8 @@ export default function AdminUsers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
-        title: "User Deleted",
-        description: "The admin user has been removed successfully.",
+        title: "Team Member Removed",
+        description: "The team member has been removed successfully.",
       });
     },
     onError: (error: any) => {
@@ -269,19 +281,33 @@ export default function AdminUsers() {
   });
 
   const handleSaveUser = (data: UserFormData) => {
+    const normalizedData: UserFormData = {
+      ...data,
+      companyTag: data.role === "SUPER_ADMIN" ? undefined : (data.companyTag?.trim() ? data.companyTag.trim() : undefined),
+    };
+
+    if (normalizedData.password !== undefined) {
+      const trimmedPassword = normalizedData.password.trim();
+      if (trimmedPassword.length === 0) {
+        delete normalizedData.password;
+      } else {
+        normalizedData.password = trimmedPassword;
+      }
+    }
+
     if (editingUser) {
-      updateUserMutation.mutate({ id: editingUser.id, data });
+      updateUserMutation.mutate({ id: editingUser.id, data: normalizedData });
     } else {
-      createUserMutation.mutate(data);
+      createUserMutation.mutate(normalizedData);
     }
   };
 
-  const handleEditUser = (user: Omit<AdminUser, 'password'>) => {
+  const handleEditUser = (user: AdminUser) => {
     setEditingUser(user);
     setIsUserDialogOpen(true);
   };
 
-  const handleDeleteUser = (user: Omit<AdminUser, 'password'>) => {
+  const handleDeleteUser = (user: AdminUser) => {
     if (user.id === adminUser?.id) {
       toast({
         title: "Cannot Delete",
@@ -291,16 +317,16 @@ export default function AdminUsers() {
       return;
     }
     
-    if (confirm(`Are you sure you want to delete the admin user "${user.email}"?`)) {
+    if (confirm(`Are you sure you want to remove the team member "${user.email}"?`)) {
       deleteUserMutation.mutate(user.id);
     }
   };
 
   const getRoleBadge = (role: string) => {
     if (role === "SUPER_ADMIN") {
-      return <Badge className="bg-purple-100 text-purple-800"><Crown className="h-3 w-3 mr-1" />Super Admin</Badge>;
+      return <Badge className="bg-purple-100 text-purple-800"><Crown className="h-3 w-3 mr-1" />Admin</Badge>;
     }
-    return <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
+    return <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Supervisor</Badge>;
   };
 
   const getCompanyBadge = (companyTag?: string | null) => {
@@ -314,8 +340,8 @@ export default function AdminUsers() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Users</h2>
-          <p className="text-muted-foreground">Loading admin users...</p>
+          <h2 className="text-3xl font-bold text-foreground">Team Members</h2>
+          <p className="text-muted-foreground">Loading team members...</p>
         </div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -335,15 +361,15 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Users</h2>
+          <h2 className="text-3xl font-bold text-foreground">Team Members</h2>
           <p className="text-muted-foreground">
-            Manage admin users and company assignments ({users.length} user{users.length !== 1 ? 's' : ''})
+            Manage admins and supervisors ({users.length} member{users.length !== 1 ? 's' : ''})
           </p>
         </div>
-        
+
         <Button onClick={() => setIsUserDialogOpen(true)} data-testid="button-add-user">
           <Plus className="h-4 w-4 mr-2" />
-          Add Admin User
+          Add Team Member
         </Button>
       </div>
 
@@ -360,15 +386,15 @@ export default function AdminUsers() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Shield className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Admins</span>
+              <span className="text-sm font-medium">Supervisors</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.role === "ADMIN").length}
+              {users.filter(u => u.role === "SUPERVISOR" || u.role === "ADMIN").length}
             </div>
           </CardContent>
         </Card>
@@ -391,13 +417,13 @@ export default function AdminUsers() {
         <Card>
           <CardContent className="text-center py-12">
             <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No admin users yet</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No team members yet</h3>
             <p className="text-muted-foreground mb-4">
-              Create admin users to manage different aspects of the platform.
+              Create team members to manage companies and training content.
             </p>
             <Button onClick={() => setIsUserDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Admin User
+              Add Team Member
             </Button>
           </CardContent>
         </Card>

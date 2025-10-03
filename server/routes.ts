@@ -1,40 +1,67 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { sendEmail, generateMagicLinkEmail } from "./services/email";
 import {
   requestAccessSchema,
   updateProgressSchema,
-  adminLoginSchema,
   adminCreateUserSchema,
+  adminUpdateUserSchema,
   insertVideoSchema,
   insertCompanyTagSchema,
 } from "@shared/schema";
 import { randomBytes } from "crypto";
-import bcrypt from "bcryptjs";
 import type { AdminUser } from "@shared/schema";
+import { Clerk } from "@clerk/backend";
+import type { LooseAuthProp } from "@clerk/express";
 
-// Extend Express Session to include admin
-declare module 'express-session' {
-  interface SessionData {
-    adminUser?: AdminUser;
+const clerkClient = Clerk({
+  secretKey: process.env.CLERK_SECRET_KEY ?? "",
+});
+
+declare global {
+  namespace Express {
+    interface Request extends LooseAuthProp {
+      adminUser?: AdminUser;
+    }
   }
 }
 
-// Admin authentication middleware
-function requireAdmin(req: Request, res: Response, next: Function) {
-  if (!req.session.adminUser) {
-    return res.status(401).json({ message: "Admin authentication required" });
+async function resolveAdminUser(userId: string | null | undefined): Promise<AdminUser | undefined> {
+  if (!userId) {
+    return undefined;
   }
-  next();
+
+  const adminUser = await storage.getAdminUserByClerkId(userId);
+  if (!adminUser || !adminUser.isActive) {
+    return undefined;
+  }
+
+  return adminUser;
 }
 
-function requireSuperAdmin(req: Request, res: Response, next: Function) {
-  if (!req.session.adminUser || req.session.adminUser.role !== "SUPER_ADMIN") {
+const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const adminUser = await resolveAdminUser(req.auth?.userId);
+    if (!adminUser) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+
+    req.adminUser = adminUser;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const requireSuperAdminOnly = (req: Request, res: Response, next: NextFunction) => {
+  const adminUser = req.adminUser;
+  if (!adminUser || adminUser.role !== "SUPER_ADMIN") {
     return res.status(403).json({ message: "Super admin access required" });
   }
+
   next();
-}
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Request access via email
@@ -298,57 +325,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Admin login
-  app.post("/api/admin/login", async (req: Request, res: Response) => {
-    try {
-      const { email, password } = adminLoginSchema.parse(req.body);
-      
-      const adminUser = await storage.getAdminUserByEmail(email);
-      if (!adminUser || !adminUser.isActive) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, adminUser.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Store admin user in session
-      req.session.adminUser = adminUser;
-
-      // Don't return password
-      const { password: _, ...adminWithoutPassword } = adminUser;
-      res.json({ 
-        message: "Login successful", 
-        adminUser: adminWithoutPassword 
-      });
-
-    } catch (error) {
-      console.error("Admin login error:", error);
-      res.status(400).json({ message: "Invalid request" });
-    }
-  });
-
-  // Admin logout
-  app.post("/api/admin/logout", requireAdmin, async (req: Request, res: Response) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Logout failed" });
-      }
-      res.json({ message: "Logout successful" });
-    });
-  });
-
   // Get current admin user
   app.get("/api/admin/me", requireAdmin, async (req: Request, res: Response) => {
-    const { password: _, ...adminWithoutPassword } = req.session.adminUser!;
-    res.json(adminWithoutPassword);
+    res.json(req.adminUser);
   });
 
   // Get all videos (admin)
   app.get("/api/admin/videos", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const adminUser = req.session.adminUser!;
+      const adminUser = req.adminUser!;
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
       
       const videos = await storage.getAllVideos(companyTag);
@@ -364,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/videos", requireAdmin, async (req: Request, res: Response) => {
     try {
       const videoData = insertVideoSchema.parse(req.body);
-      const adminUser = req.session.adminUser!;
+      const adminUser = req.adminUser!;
       
       // If admin is not super admin, assign their company tag
       if (adminUser.role !== "SUPER_ADMIN" && adminUser.companyTag) {
@@ -385,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = insertVideoSchema.partial().parse(req.body);
-      const adminUser = req.session.adminUser!;
+      const adminUser = req.adminUser!;
 
       // Check if admin has access to this video
       const existingVideo = await storage.getVideo(id);
@@ -410,7 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/admin/videos/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const adminUser = req.session.adminUser!;
+      const adminUser = req.adminUser!;
 
       // Check if admin has access to this video
       const existingVideo = await storage.getVideo(id);
@@ -434,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get completion logs (admin)
   app.get("/api/admin/completions", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const adminUser = req.session.adminUser!;
+      const adminUser = req.adminUser!;
       const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
       
       const completions = await storage.getAllAccessLogs(companyTag);
@@ -447,11 +432,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all admin users (super admin only)
-  app.get("/api/admin/users", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.get("/api/admin/users", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const users = await storage.getAllAdminUsers();
-      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
-      res.json(usersWithoutPasswords);
+      res.json(users);
 
     } catch (error) {
       console.error("Get admin users error:", error);
@@ -460,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create admin user (super admin only)
-  app.post("/api/admin/users", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.post("/api/admin/users", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const userData = adminCreateUserSchema.parse(req.body);
       
@@ -470,16 +454,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already exists" });
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(userData.password, 12);
-      
-      const user = await storage.createAdminUser({
-        ...userData,
-        password: hashedPassword,
+      const companyTag = userData.role === "SUPER_ADMIN"
+        ? null
+        : userData.companyTag?.trim() ? userData.companyTag.trim() : null;
+
+      const clerkUser = await clerkClient.users.createUser({
+        emailAddress: [userData.email],
+        password: userData.password,
+        publicMetadata: {
+          role: userData.role,
+          companyTag,
+        },
       });
 
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      const user = await storage.createAdminUser({
+        email: userData.email,
+        clerkUserId: clerkUser.id,
+        role: userData.role,
+        companyTag,
+        isActive: true,
+      });
+
+      res.json(user);
 
     } catch (error) {
       console.error("Create admin user error:", error);
@@ -488,19 +484,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update admin user (super admin only)
-  app.patch("/api/admin/users/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.patch("/api/admin/users/:id", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const updates = adminCreateUserSchema.partial().parse(req.body);
-      
-      // Hash password if provided
-      if (updates.password) {
-        updates.password = await bcrypt.hash(updates.password, 12);
+      const updates = adminUpdateUserSchema.parse(req.body);
+
+      const existingUser = await storage.getAdminUserById(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
       }
 
-      const user = await storage.updateAdminUser(id, updates);
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      const normalizedCompanyTag =
+        updates.role === "SUPER_ADMIN"
+          ? null
+          : updates.companyTag !== undefined
+            ? updates.companyTag?.trim() ? updates.companyTag.trim() : null
+            : existingUser.companyTag;
+
+      const clerkUpdates: Record<string, unknown> = {
+        publicMetadata: {
+          role: updates.role ?? existingUser.role,
+          companyTag: normalizedCompanyTag ?? null,
+        },
+      };
+
+      if (updates.email && updates.email !== existingUser.email) {
+        clerkUpdates.emailAddress = [updates.email];
+      }
+
+      if (updates.password) {
+        clerkUpdates.password = updates.password;
+      }
+
+      if (updates.email || updates.password || updates.role || updates.companyTag !== undefined) {
+        await clerkClient.users.updateUser(existingUser.clerkUserId, clerkUpdates);
+      }
+
+      const user = await storage.updateAdminUser(id, {
+        email: updates.email ?? existingUser.email,
+        role: updates.role ?? existingUser.role,
+        companyTag: normalizedCompanyTag ?? existingUser.companyTag,
+      });
+
+      res.json(user);
 
     } catch (error) {
       console.error("Update admin user error:", error);
@@ -509,9 +535,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete admin user (super admin only)
-  app.delete("/api/admin/users/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/admin/users/:id", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const user = await storage.getAdminUserById(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await clerkClient.users.deleteUser(user.clerkUserId);
       await storage.deleteAdminUser(id);
       res.json({ message: "User deleted successfully" });
 
@@ -522,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all company tags (super admin only)
-  app.get("/api/admin/company-tags", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.get("/api/admin/company-tags", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const companyTags = await storage.getAllCompanyTags();
       res.json(companyTags);
@@ -534,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create company tag (super admin only)
-  app.post("/api/admin/company-tags", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.post("/api/admin/company-tags", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const companyTagData = insertCompanyTagSchema.parse(req.body);
       const companyTag = await storage.createCompanyTag(companyTagData);
@@ -547,7 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update company tag (super admin only)
-  app.patch("/api/admin/company-tags/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.patch("/api/admin/company-tags/:id", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updates = insertCompanyTagSchema.partial().parse(req.body);
@@ -561,7 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete company tag (super admin only)
-  app.delete("/api/admin/company-tags/:id", requireSuperAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/admin/company-tags/:id", requireAdmin, requireSuperAdminOnly, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       await storage.deleteCompanyTag(id);
@@ -598,59 +630,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Seed super admin (for demo purposes - remove in production)
-  app.post("/api/seed-admin", async (req: Request, res: Response) => {
-    try {
-      const existingAdmin = await storage.getAdminUserByEmail("admin@tasksafe.au");
-      if (existingAdmin) {
-        return res.json({ message: "Super admin already exists" });
-      }
-
-      const hashedPassword = await bcrypt.hash("admin123", 12);
-      
-      const admin = await storage.createAdminUser({
-        email: "admin@tasksafe.au",
-        password: hashedPassword,
-        role: "SUPER_ADMIN",
-        companyTag: null,
-      });
-
-      res.json({ 
-        message: "Super admin created successfully",
-        email: admin.email,
-        note: "Use email: admin@tasksafe.au, password: admin123 to login"
-      });
-
-    } catch (error) {
-      console.error("Seed admin error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
   // Data import endpoint for transferring data to deployed database
   app.post("/api/import-data", async (req: Request, res: Response) => {
     try {
       const importData = req.body;
       let importCount = 0;
 
-      // Import admin users
       if (importData.adminUsers && importData.adminUsers.length > 0) {
-        for (const user of importData.adminUsers) {
-          try {
-            const existingUser = await storage.getAdminUserByEmail(user.email);
-            if (!existingUser) {
-              await storage.createAdminUser({
-                email: user.email,
-                password: user.password, // Already hashed
-                role: user.role,
-                companyTag: user.companyTag || null,
-              });
-              importCount++;
-            }
-          } catch (error) {
-            console.log(`Skipping existing admin user: ${user.email}`);
-          }
-        }
+        console.warn("⚠️ Admin user import skipped. Please recreate admin accounts using Clerk.");
       }
 
       // Import company tags

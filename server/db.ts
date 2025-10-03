@@ -37,6 +37,29 @@ export async function ensureDatabaseSchema(): Promise<void> {
       await client.query("ALTER TABLE company_tags ADD COLUMN logo_url text");
       console.log("✅ Added logo_url column to company_tags table");
     }
+
+    const { rows: clerkIdColumn } = await client.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'clerk_user_id'",
+    );
+
+    if (clerkIdColumn.length === 0) {
+      console.warn("⚠️ Missing clerk_user_id column on admin_users. Adding required Clerk columns...");
+      await client.query("ALTER TABLE admin_users ADD COLUMN clerk_user_id text");
+      await client.query("UPDATE admin_users SET clerk_user_id = CONCAT('legacy-', id) WHERE clerk_user_id IS NULL");
+      await client.query("ALTER TABLE admin_users ALTER COLUMN clerk_user_id SET NOT NULL");
+      await client.query("ALTER TABLE admin_users ADD CONSTRAINT admin_users_clerk_user_id_unique UNIQUE (clerk_user_id)");
+      console.log("✅ Added clerk_user_id column to admin_users table");
+    }
+
+    const { rows: passwordColumn } = await client.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'password'",
+    );
+
+    if (passwordColumn.length > 0) {
+      console.warn("⚠️ Removing legacy password column from admin_users...");
+      await client.query("ALTER TABLE admin_users DROP COLUMN password");
+      console.log("✅ Removed password column from admin_users table");
+    }
   } catch (error) {
     console.error("❌ Failed to ensure database schema:", error);
     throw error;

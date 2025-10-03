@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAdmin } from "@/contexts/admin-context";
+import { UserButton } from "@clerk/clerk-react";
 import { useLocation, Route, Switch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,8 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
     ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
+      { name: "Team", href: "/admin/users", icon: Users },
+      { name: "Companies", href: "/admin/company-tags", icon: Tag }
     ] : []),
   ];
 
@@ -75,6 +76,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               <span className="hidden sm:inline text-sm text-muted-foreground truncate max-w-32 lg:max-w-none">
                 {adminUser?.email}
               </span>
+              <UserButton afterSignOutUrl="/admin/login" appearance={{ elements: { userButtonPopoverCard: "shadow-lg" } }} />
               <Button
                 variant="outline"
                 size="sm"
@@ -281,14 +283,14 @@ function AdminDashboardHome() {
 }
 
 export default function AdminDashboard() {
-  const { adminUser, isLoading } = useAdmin();
+  const { adminUser, isLoading, isClerkSignedIn, hasAdminAccess, logout } = useAdmin();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !adminUser) {
+    if (!isLoading && !isClerkSignedIn) {
       setLocation("/admin/login");
     }
-  }, [adminUser, isLoading, setLocation]);
+  }, [isClerkSignedIn, isLoading, setLocation]);
 
   if (isLoading) {
     return (
@@ -301,11 +303,12 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!adminUser) {
+  if (!hasAdminAccess || !adminUser) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Redirecting to login...</p>
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Your account does not have admin access. Please contact your administrator.</p>
+          <Button onClick={logout} variant="outline">Sign out</Button>
         </div>
       </div>
     );

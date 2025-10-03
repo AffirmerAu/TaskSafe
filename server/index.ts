@@ -1,22 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { ensureDatabaseSchema } from "./db";
 import { setupVite, serveStatic, log } from "./vite";
+import { ClerkExpressWithAuth } from "@clerk/express";
 
 // Validate required environment variables for production
 function validateEnvironment() {
   const requiredEnvVars = [];
   
-  if (process.env.NODE_ENV === "production") {
-    if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === "tasksafe-admin-secret-key-change-in-production") {
-      requiredEnvVars.push("SESSION_SECRET must be set to a secure value in production");
-    }
-    
-    if (!process.env.DATABASE_URL) {
-      requiredEnvVars.push("DATABASE_URL is required for database connection");
-    }
+  if (!process.env.CLERK_SECRET_KEY) {
+    requiredEnvVars.push("CLERK_SECRET_KEY is required for Clerk authentication");
+  }
+
+  if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
+    requiredEnvVars.push("DATABASE_URL is required for database connection");
   }
   
   if (requiredEnvVars.length > 0) {
@@ -58,31 +55,7 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Configure session middleware with production-safe store
-const sessionConfig: any = {
-  secret: process.env.SESSION_SECRET || "tasksafe-admin-secret-key-change-in-production",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: 'lax', // Better security for same-site admin access
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  }
-};
-
-// Use PostgreSQL session store in production for persistence and multi-instance compatibility
-if (process.env.NODE_ENV === "production") {
-  const PgSession = connectPgSimple(session);
-  sessionConfig.store = new PgSession({
-    conString: process.env.DATABASE_URL,
-    tableName: 'session',
-    createTableIfMissing: true,
-  });
-}
-
-app.use(session(sessionConfig));
+app.use(ClerkExpressWithAuth());
 
 app.use((req, res, next) => {
   const start = Date.now();

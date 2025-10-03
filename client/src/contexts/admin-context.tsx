@@ -1,78 +1,97 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import type { AdminUser } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 
 interface AdminContextType {
-  adminUser: Omit<AdminUser, 'password'> | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  adminUser: AdminUser | null;
   isLoading: boolean;
+  isClerkSignedIn: boolean;
+  hasAdminAccess: boolean;
+  refresh: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [adminUser, setAdminUser] = useState<Omit<AdminUser, 'password'> | null>(null);
+  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if admin is already logged in
-    checkAuthStatus();
-  }, []);
+  const fetchAdminUser = useCallback(async () => {
+    if (!isLoaded) {
+      return;
+    }
 
-  const checkAuthStatus = async () => {
+    if (!isSignedIn) {
+      setAdminUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const response = await fetch("/api/admin/me", {
-        credentials: 'include'
+        credentials: "include",
       });
+
       if (response.ok) {
         const admin = await response.json();
         setAdminUser(admin);
+      } else if (response.status === 401 || response.status === 403) {
+        setAdminUser(null);
+      } else {
+        console.error("Unexpected admin session response", response.status);
       }
     } catch (error) {
       console.error("Auth check failed:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoaded, isSignedIn]);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAdminUser(data.adminUser);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Login failed:", error);
-      return false;
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
     }
-  };
 
-  const logout = async () => {
+    if (!isSignedIn) {
+      setAdminUser(null);
+      setIsLoading(false);
+      queryClient.clear();
+      return;
+    }
+
+    fetchAdminUser();
+  }, [isLoaded, isSignedIn, fetchAdminUser]);
+
+  const refresh = useCallback(async () => {
+    await fetchAdminUser();
+  }, [fetchAdminUser]);
+
+  const logout = useCallback(async () => {
     try {
-      await fetch("/api/admin/logout", { 
-        method: "POST",
-        credentials: 'include'
-      });
+      await signOut();
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
       setAdminUser(null);
+      queryClient.clear();
     }
+  }, [signOut]);
+
+  const value: AdminContextType = {
+    adminUser,
+    isLoading,
+    isClerkSignedIn: Boolean(isSignedIn),
+    hasAdminAccess: Boolean(adminUser),
+    refresh,
+    logout,
   };
 
   return (
-    <AdminContext.Provider value={{ adminUser, login, logout, isLoading }}>
+    <AdminContext.Provider value={value}>
       {children}
     </AdminContext.Provider>
   );
