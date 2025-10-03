@@ -391,9 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(videos);
       }
 
-      const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-
-      const videos = await storage.getAllVideos(companyTag);
+      const videos = await storage.getAllVideos();
       res.json(videos);
 
     } catch (error) {
@@ -435,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Video not found" });
       }
       
-      if (adminUser.role !== "SUPER_ADMIN" && existingVideo.companyTag !== adminUser.companyTag) {
+      if (adminUser.role === "SUPERVISOR" && existingVideo.companyTag !== adminUser.companyTag) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -460,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Video not found" });
       }
       
-      if (adminUser.role !== "SUPER_ADMIN" && existingVideo.companyTag !== adminUser.companyTag) {
+      if (adminUser.role === "SUPERVISOR" && existingVideo.companyTag !== adminUser.companyTag) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -486,9 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(completions);
       }
 
-      const companyTag = adminUser.role === "SUPER_ADMIN" ? undefined : adminUser.companyTag || undefined;
-
-      const completions = await storage.getAllAccessLogs(companyTag);
+      const completions = await storage.getAllAccessLogs();
       res.json(completions);
 
     } catch (error) {

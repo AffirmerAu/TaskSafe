@@ -331,6 +331,7 @@ export default function AdminVideos() {
   // Fetch videos
   const { data: videos = [], isLoading } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],
+    refetchInterval: 30000,
   });
 
   useEffect(() => {

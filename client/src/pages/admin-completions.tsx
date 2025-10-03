@@ -65,6 +65,7 @@ export default function AdminCompletions() {
   // Fetch completion data
   const { data: completions = [], isLoading } = useQuery<CompletionRecord[]>({
     queryKey: ["/api/admin/completions"],
+    refetchInterval: 30000,
   });
 
   const { data: companyTags = [] } = useQuery<CompanyTag[]>({
@@ -75,6 +76,7 @@ export default function AdminCompletions() {
   // Fetch videos for filter dropdown
   const { data: videos = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/videos"],
+    refetchInterval: 30000,
   });
 
   const derivedCompanyTags = useMemo(() => {
