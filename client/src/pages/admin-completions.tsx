@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { type CompanyTag } from "@shared/schema";
 import { 
@@ -485,10 +491,69 @@ export default function AdminCompletions() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b">
-                  <tr className="text-left">
+            <div className="md:hidden p-4">
+              <Accordion type="single" collapsible>
+                {filteredCompletions.map(record => (
+                  <AccordionItem key={record.id} value={record.id}>
+                    <AccordionTrigger className="flex items-center justify-between gap-4">
+                      <div className="text-left">
+                        <div className="text-sm font-medium" data-testid={`email-${record.id}`}>
+                          {record.email}
+                        </div>
+                        <div className="text-xs text-muted-foreground">@{getEmailDomain(record.email)}</div>
+                      </div>
+                      <div className="shrink-0" data-testid={`status-${record.id}`}>
+                        {getCompletionBadge(record.completionPercentage)}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-3 text-sm">
+                        <div data-testid={`timestamp-${record.id}`}>
+                          <p className="text-xs uppercase text-muted-foreground">Timestamp</p>
+                          <p className="font-medium">
+                            {format(new Date(record.accessedAt), "MMM dd, yyyy")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(record.accessedAt), "HH:mm:ss")}
+                          </p>
+                        </div>
+                        <div data-testid={`video-${record.id}`}>
+                          <p className="text-xs uppercase text-muted-foreground">Video Title</p>
+                          <p className="font-medium leading-snug">{record.videoTitle}</p>
+                        </div>
+                        <div className="flex flex-col" data-testid={`company-${record.id}`}>
+                          <p className="text-xs uppercase text-muted-foreground">Company Tag</p>
+                          <Badge variant="outline" className="w-fit">
+                            {formatCompanyTag(record.companyTag)}
+                          </Badge>
+                        </div>
+                        <div data-testid={`duration-${record.id}`}>
+                          <p className="text-xs uppercase text-muted-foreground">Watched</p>
+                          <p className="font-medium">{formatDuration(record.watchDuration)}</p>
+                        </div>
+                        <div className="space-y-1" data-testid={`completion-${record.id}`}>
+                          <p className="text-xs uppercase text-muted-foreground">Completion</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{record.completionPercentage}%</span>
+                            <div className="w-full bg-muted rounded-full h-1">
+                              <div
+                                className="bg-primary h-1 rounded-full"
+                                style={{ width: `${Math.min(record.completionPercentage, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+            <div className="hidden md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b">
+                    <tr className="text-left">
                     <th className="p-4 font-medium">Timestamp</th>
                     <th className="p-4 font-medium">Email</th>
                     <th className="p-4 font-medium">Video Title</th>
