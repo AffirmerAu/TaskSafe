@@ -72,8 +72,8 @@ const cases: TestCase[] = [
   },
   {
     name: 'falls back to Render external URL',
-    env: { RENDER_EXTERNAL_URL: 'https://service.onrender.com' },
-    expectedBase: 'https://service.onrender.com',
+    env: { RENDER_EXTERNAL_URL: 'https://render.example.com' },
+    expectedBase: 'https://render.example.com',
   },
   {
     name: 'normalizes provider URL without protocol',
