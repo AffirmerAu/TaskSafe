@@ -42,8 +42,8 @@ export default function AdminLogin() {
             <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
               <Shield className="h-6 w-6 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl font-bold">TaskSafe Admin</CardTitle>
-            <p className="text-muted-foreground">Sign in to access the admin dashboard</p>
+            <CardTitle className="text-2xl font-bold">TaskSafe Admin & Supervisor</CardTitle>
+            <p className="text-muted-foreground">Sign in to manage training content and completions</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,7 +61,7 @@ export default function AdminLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
+                  placeholder="you@example.com"
                   required
                   data-testid="input-email"
                 />

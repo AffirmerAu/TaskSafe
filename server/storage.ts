@@ -1,10 +1,10 @@
-import { 
-  videos, 
-  magicLinks, 
+import {
+  videos,
+  magicLinks,
   accessLogs,
   adminUsers,
   companyTags,
-  type Video, 
+  type Video,
   type InsertVideo,
   type MagicLink,
   type InsertMagicLink,
@@ -13,7 +13,9 @@ import {
   type AdminUser,
   type InsertAdminUser,
   type CompanyTag,
-  type InsertCompanyTag
+  type InsertCompanyTag,
+  type SupervisorCreate,
+  type SupervisorUpdate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, or, sql } from "drizzle-orm";
@@ -44,13 +46,17 @@ export interface IStorage {
     averageCompletion: number;
     uniqueViewers: number;
   }>;
-  
+
   // Admin user methods
   getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  getAdminUserById(id: string): Promise<AdminUser | undefined>;
   createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser>;
   getAllAdminUsers(): Promise<AdminUser[]>;
   updateAdminUser(id: string, adminUser: Partial<InsertAdminUser>): Promise<AdminUser>;
   deleteAdminUser(id: string): Promise<void>;
+  getSupervisors(companyTag?: string): Promise<AdminUser[]>;
+  createSupervisor(supervisor: SupervisorCreate & { role?: "SUPERVISOR" }): Promise<AdminUser>;
+  updateSupervisor(id: string, supervisor: SupervisorUpdate & { role?: "SUPERVISOR" }): Promise<AdminUser>;
 
   // Company tag methods
   getCompanyTagByName(name: string): Promise<CompanyTag | undefined>;
@@ -156,11 +162,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVideos(companyTag?: string): Promise<Video[]> {
-    const query = db.select().from(videos);
-    if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(videos.createdAt));
+    if (typeof companyTag === "string") {
+      const normalizedTag = companyTag.trim();
+      if (normalizedTag.length === 0) {
+        return [];
+      }
+
+      return await db.select().from(videos)
+        .where(eq(videos.companyTag, normalizedTag))
+        .orderBy(desc(videos.createdAt));
     }
-    return await query.orderBy(desc(videos.createdAt));
+
+    return await db.select().from(videos)
+      .orderBy(desc(videos.createdAt));
   }
 
   async updateVideo(id: string, video: Partial<InsertVideo>): Promise<Video> {
@@ -177,7 +191,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAccessLogs(companyTag?: string): Promise<(AccessLog & { videoTitle: string | null })[]> {
-    const query = db.select({
+    const baseQuery = db.select({
       id: accessLogs.id,
       magicLinkId: accessLogs.magicLinkId,
       email: accessLogs.email,
@@ -194,10 +208,23 @@ export class DatabaseStorage implements IStorage {
     .from(accessLogs)
     .leftJoin(videos, eq(accessLogs.videoId, videos.id));
 
-    if (companyTag) {
-      return await query.where(eq(videos.companyTag, companyTag)).orderBy(desc(accessLogs.accessedAt));
+    if (typeof companyTag === "string") {
+      const normalizedTag = companyTag.trim();
+      if (normalizedTag.length === 0) {
+        return [];
+      }
+
+      return await baseQuery
+        .where(
+          or(
+            eq(videos.companyTag, normalizedTag),
+            eq(accessLogs.companyTag, normalizedTag)
+          )
+        )
+        .orderBy(desc(accessLogs.accessedAt));
     }
-    return await query.orderBy(desc(accessLogs.accessedAt));
+
+    return await baseQuery.orderBy(desc(accessLogs.accessedAt));
   }
 
   async getVideoAnalytics(videoId: string): Promise<{
@@ -225,7 +252,14 @@ export class DatabaseStorage implements IStorage {
 
   // Admin user methods
   async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
-    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
+    const [user] = await db.select().from(adminUsers)
+      .where(and(eq(adminUsers.email, email), eq(adminUsers.isActive, true)));
+    return user || undefined;
+  }
+
+  async getAdminUserById(id: string): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers)
+      .where(and(eq(adminUsers.id, id), eq(adminUsers.isActive, true)));
     return user || undefined;
   }
 
@@ -239,7 +273,13 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAdminUsers(): Promise<AdminUser[]> {
     return await db.select().from(adminUsers)
-      .where(eq(adminUsers.isActive, true))
+      .where(and(
+        eq(adminUsers.isActive, true),
+        or(
+          eq(adminUsers.role, "ADMIN"),
+          eq(adminUsers.role, "SUPER_ADMIN")
+        )
+      ))
       .orderBy(desc(adminUsers.createdAt));
   }
 
@@ -256,6 +296,64 @@ export class DatabaseStorage implements IStorage {
     await db.update(adminUsers)
       .set({ isActive: false })
       .where(eq(adminUsers.id, id));
+  }
+
+  async getSupervisors(companyTag?: string): Promise<AdminUser[]> {
+    const conditions = [
+      eq(adminUsers.role, "SUPERVISOR"),
+      eq(adminUsers.isActive, true),
+    ];
+
+    if (companyTag) {
+      conditions.push(eq(adminUsers.companyTag, companyTag));
+    }
+
+    return await db.select().from(adminUsers)
+      .where(and(...conditions))
+      .orderBy(desc(adminUsers.createdAt));
+  }
+
+  async createSupervisor(supervisor: SupervisorCreate & { role?: "SUPERVISOR" }): Promise<AdminUser> {
+    const values: InsertAdminUser = {
+      email: supervisor.email,
+      password: supervisor.password,
+      role: "SUPERVISOR",
+    };
+
+    if (supervisor.companyTag) {
+      values.companyTag = supervisor.companyTag;
+    }
+
+    const [user] = await db
+      .insert(adminUsers)
+      .values(values)
+      .returning();
+    return user;
+  }
+
+  async updateSupervisor(id: string, supervisor: SupervisorUpdate & { role?: "SUPERVISOR" }): Promise<AdminUser> {
+    const updates: Partial<InsertAdminUser> = {
+      role: "SUPERVISOR",
+    };
+
+    if (supervisor.email !== undefined) {
+      updates.email = supervisor.email;
+    }
+
+    if (supervisor.password !== undefined) {
+      updates.password = supervisor.password;
+    }
+
+    if (supervisor.companyTag !== undefined) {
+      updates.companyTag = supervisor.companyTag;
+    }
+
+    const [user] = await db
+      .update(adminUsers)
+      .set(updates)
+      .where(eq(adminUsers.id, id))
+      .returning();
+    return user;
   }
 
   // Company tag methods
