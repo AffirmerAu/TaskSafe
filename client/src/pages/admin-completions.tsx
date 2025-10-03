@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/admin-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { type CompanyTag } from "@shared/schema";
-import { 
-  DownloadIcon, 
-  FilterIcon, 
+import {
+  DownloadIcon,
+  FilterIcon,
   Calendar,
   Mail,
   Video,
@@ -19,9 +19,11 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Search
+  Search,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface CompletionRecord {
   id: string;
@@ -57,6 +59,7 @@ export default function AdminCompletions() {
     searchTerm: "",
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const isSuperAdmin = adminUser?.role === "SUPER_ADMIN";
   const isSupervisor = adminUser?.role === "SUPERVISOR";
@@ -117,6 +120,13 @@ export default function AdminCompletions() {
   const canFilterByCompany = adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN";
 
   const formatCompanyTag = (tag?: string | null) => tag ?? "Unassigned";
+
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   // Filter and search logic
   const filteredCompletions = useMemo(() => {
@@ -486,59 +496,104 @@ export default function AdminCompletions() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead className="border-b">
                   <tr className="text-left">
-                    <th className="p-4 font-medium">Timestamp</th>
+                    <th className="p-4 font-medium hidden md:table-cell">Timestamp</th>
                     <th className="p-4 font-medium">Email</th>
-                    <th className="p-4 font-medium">Video Title</th>
-                    <th className="p-4 font-medium">Company Tag</th>
-                    <th className="p-4 font-medium">Watched</th>
-                    <th className="p-4 font-medium">Completion</th>
+                    <th className="p-4 font-medium hidden md:table-cell">Video Title</th>
+                    <th className="p-4 font-medium hidden md:table-cell">Company Tag</th>
+                    <th className="p-4 font-medium hidden md:table-cell">Watched</th>
+                    <th className="p-4 font-medium hidden md:table-cell">Completion</th>
                     <th className="p-4 font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCompletions.map((record) => (
-                    <tr key={record.id} className="border-b hover:bg-muted/50">
-                      <td className="p-4" data-testid={`timestamp-${record.id}`}>
-                        <div className="text-sm">
-                          {format(new Date(record.accessedAt), "MMM dd, yyyy")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(record.accessedAt), "HH:mm:ss")}
-                        </div>
-                      </td>
-                      <td className="p-4" data-testid={`email-${record.id}`}>
-                        <div className="text-sm font-medium">{record.email}</div>
-                        <div className="text-xs text-muted-foreground">
-                          @{getEmailDomain(record.email)}
-                        </div>
-                      </td>
-                      <td className="p-4" data-testid={`video-${record.id}`}>
-                        <div className="text-sm font-medium line-clamp-2">
-                          {record.videoTitle}
-                        </div>
-                      </td>
-                      <td className="p-4" data-testid={`company-${record.id}`}>
-                        <Badge variant="outline">{formatCompanyTag(record.companyTag)}</Badge>
-                      </td>
-                      <td className="p-4" data-testid={`duration-${record.id}`}>
-                        <div className="text-sm">{formatDuration(record.watchDuration)}</div>
-                      </td>
-                      <td className="p-4" data-testid={`completion-${record.id}`}>
-                        <div className="text-sm font-medium">{record.completionPercentage}%</div>
-                        <div className="w-20 bg-muted rounded-full h-1">
-                          <div 
-                            className="bg-primary h-1 rounded-full" 
-                            style={{ width: `${Math.min(record.completionPercentage, 100)}%` }}
-                          />
-                        </div>
-                      </td>
-                      <td className="p-4" data-testid={`status-${record.id}`}>
-                        {getCompletionBadge(record.completionPercentage)}
-                      </td>
-                    </tr>
+                    <Fragment key={record.id}>
+                      <tr className="border-b hover:bg-muted/50">
+                        <td className="p-4 hidden md:table-cell" data-testid={`timestamp-${record.id}`}>
+                          <div>{format(new Date(record.accessedAt), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(record.accessedAt), "HH:mm:ss")}
+                          </div>
+                        </td>
+                        <td className="p-4" data-testid={`email-${record.id}`}>
+                          <div className="font-medium">{record.email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            @{getEmailDomain(record.email)}
+                          </div>
+                        </td>
+                        <td className="p-4 hidden md:table-cell" data-testid={`video-${record.id}`}>
+                          <div className="font-medium line-clamp-2">{record.videoTitle}</div>
+                        </td>
+                        <td className="p-4 hidden md:table-cell" data-testid={`company-${record.id}`}>
+                          <Badge variant="outline">{formatCompanyTag(record.companyTag)}</Badge>
+                        </td>
+                        <td className="p-4 hidden md:table-cell" data-testid={`duration-${record.id}`}>
+                          <div>{formatDuration(record.watchDuration)}</div>
+                        </td>
+                        <td className="p-4 hidden md:table-cell" data-testid={`completion-${record.id}`}>
+                          <div className="font-medium">{record.completionPercentage}%</div>
+                          <div className="w-24 bg-muted rounded-full h-1">
+                            <div
+                              className="bg-primary h-1 rounded-full"
+                              style={{ width: `${Math.min(record.completionPercentage, 100)}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="p-4" data-testid={`status-${record.id}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            {getCompletionBadge(record.completionPercentage)}
+                            <button
+                              type="button"
+                              className="md:hidden text-muted-foreground hover:text-foreground"
+                              onClick={() => toggleRow(record.id)}
+                              aria-expanded={Boolean(expandedRows[record.id])}
+                              aria-controls={`completion-details-${record.id}`}
+                            >
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform",
+                                  expandedRows[record.id] ? "rotate-180" : "",
+                                )}
+                              />
+                              <span className="sr-only">Toggle completion details</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedRows[record.id] && (
+                        <tr className="md:hidden" id={`completion-details-${record.id}`}>
+                          <td colSpan={7} className="px-4 pb-4">
+                            <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Timestamp</span>
+                                <span className="font-medium">
+                                  {format(new Date(record.accessedAt), "MMM dd, yyyy HH:mm:ss")}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Video</span>
+                                <div className="font-medium">{record.videoTitle}</div>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Company Tag</span>
+                                <Badge variant="outline">{formatCompanyTag(record.companyTag)}</Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Watched</span>
+                                <span className="font-medium">{formatDuration(record.watchDuration)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Completion</span>
+                                <span className="font-medium">{record.completionPercentage}%</span>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
