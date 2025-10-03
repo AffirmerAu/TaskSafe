@@ -495,20 +495,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/users/:id", requireSuperAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const existingUser = await storage.getAdminUserById(id);
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const updates = adminUpdateUserSchema.parse(req.body);
+      const normalizedUpdates: typeof updates = { ...updates };
 
       // Hash password if provided
-      if (updates.password) {
-        updates.password = await bcrypt.hash(updates.password, 12);
+      if (normalizedUpdates.password) {
+        normalizedUpdates.password = await bcrypt.hash(normalizedUpdates.password, 12);
       }
 
-      if (updates.role === "SUPER_ADMIN") {
-        updates.companyTag = null;
-      } else if (updates.companyTag !== undefined) {
-        updates.companyTag = updates.companyTag?.trim() ? updates.companyTag.trim() : null;
+      if (normalizedUpdates.role === "SUPER_ADMIN") {
+        normalizedUpdates.companyTag = null;
+      } else if (normalizedUpdates.companyTag !== undefined) {
+        normalizedUpdates.companyTag = normalizedUpdates.companyTag?.trim()
+          ? normalizedUpdates.companyTag.trim()
+          : null;
+      } else {
+        normalizedUpdates.companyTag = existingUser.companyTag;
       }
 
-      const user = await storage.updateAdminUser(id, updates);
+      const user = await storage.updateAdminUser(id, normalizedUpdates);
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
 
