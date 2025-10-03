@@ -28,15 +28,17 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
+    ...(adminUser?.role === "SUPER_ADMIN"
+      ? [
+          { name: "Admin Users", href: "/admin/users", icon: Users },
+          { name: "Companies", href: "/admin/company-tags", icon: Tag },
+        ]
+      : []),
+    ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN")
+      ? [{ name: "Supervisors", href: "/admin/supervisors", icon: UserCog }]
+      : []),
     { name: "Videos", href: "/admin/videos", icon: Video },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
-    ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN") ? [
-      { name: "Supervisors", href: "/admin/supervisors", icon: UserCog },
-    ] : []),
-    ...(adminUser?.role === "SUPER_ADMIN" ? [
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Company Tags", href: "/admin/company-tags", icon: Tag }
-    ] : []),
   ];
 
   const handleLogout = async () => {

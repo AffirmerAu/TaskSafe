@@ -175,7 +175,7 @@ function VideoDialog({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="companyTag">Company Tag (Optional)</Label>
+              <Label htmlFor="companyTag">Company Tag</Label>
               {adminUser?.role === "SUPER_ADMIN" && companyTags.length > 0 ? (
                 <Select
                   value={formData.companyTag || "none"}
