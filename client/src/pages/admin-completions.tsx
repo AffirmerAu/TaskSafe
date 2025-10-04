@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 interface CompletionRecord {
   id: string;
   email: string;
+  userName?: string | null;
   videoTitle: string;
   videoId: string;
   accessedAt: string;
@@ -173,6 +174,7 @@ export default function AdminCompletions() {
     if (filters.searchTerm) {
       const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(c =>
+        (c.userName && c.userName.toLowerCase().includes(term)) ||
         c.email.toLowerCase().includes(term) ||
         c.videoTitle.toLowerCase().includes(term) ||
         (c.companyTag && c.companyTag.toLowerCase().includes(term))
@@ -264,6 +266,15 @@ export default function AdminCompletions() {
 
   const getEmailDomain = (email: string) => {
     return email.split('@')[1] || '';
+  };
+
+  const getViewerName = (record: CompletionRecord) => {
+    const name = record.userName?.trim();
+    if (name && name.length > 0) {
+      return name;
+    }
+    const [localPart] = record.email.split('@');
+    return localPart || record.email;
   };
 
   if (isLoading) {
@@ -500,7 +511,10 @@ export default function AdminCompletions() {
                 <thead className="border-b">
                   <tr className="text-left">
                     <th className="p-4 font-medium hidden md:table-cell">Timestamp</th>
-                    <th className="p-4 font-medium">Email</th>
+                    <th className="p-4 font-medium">
+                      <span className="hidden md:inline">Email</span>
+                      <span className="md:hidden">Name</span>
+                    </th>
                     <th className="p-4 font-medium hidden md:table-cell">Video Title</th>
                     <th className="p-4 font-medium hidden md:table-cell">Company Tag</th>
                     <th className="p-4 font-medium hidden md:table-cell">Watched</th>
@@ -519,9 +533,12 @@ export default function AdminCompletions() {
                           </div>
                         </td>
                         <td className="p-4" data-testid={`email-${record.id}`}>
-                          <div className="font-medium">{record.email}</div>
-                          <div className="text-xs text-muted-foreground">
-                            @{getEmailDomain(record.email)}
+                          <div className="font-medium md:hidden">{getViewerName(record)}</div>
+                          <div className="hidden md:block">
+                            <div className="font-medium">{record.email}</div>
+                            <div className="text-xs text-muted-foreground">
+                              @{getEmailDomain(record.email)}
+                            </div>
                           </div>
                         </td>
                         <td className="p-4 hidden md:table-cell" data-testid={`video-${record.id}`}>
@@ -572,6 +589,10 @@ export default function AdminCompletions() {
                                 <span className="font-medium">
                                   {format(new Date(record.accessedAt), "MMM dd, yyyy HH:mm:ss")}
                                 </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Email</span>
+                                <span className="font-medium break-all text-right">{record.email}</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Video</span>
