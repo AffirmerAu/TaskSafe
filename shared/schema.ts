@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,6 +21,16 @@ export const adminUsers = pgTable("admin_users", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
+
+export const reportingPreferences = pgTable("reporting_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supervisorId: varchar("supervisor_id").notNull().references(() => adminUsers.id),
+  sendCompletionEmails: boolean("send_completion_emails").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+}, (table) => ({
+  supervisorUnique: uniqueIndex("reporting_preferences_supervisor_id_key").on(table.supervisorId),
+}));
 
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -108,6 +118,12 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   createdAt: true,
 });
 
+export const insertReportingPreferenceSchema = createInsertSchema(reportingPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertVideoSchema = createInsertSchema(videos).omit({
   id: true,
   createdAt: true,
@@ -153,6 +169,10 @@ export const updateProgressSchema = z.object({
   completionPercentage: z.number().min(0).max(100),
 });
 
+export const reportingPreferencesUpdateSchema = z.object({
+  sendCompletionEmails: z.boolean(),
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
@@ -194,3 +214,6 @@ export type AdminLogin = z.infer<typeof adminLoginSchema>;
 export type AdminCreateUser = z.infer<typeof adminCreateUserSchema>;
 export type SupervisorCreate = z.infer<typeof supervisorCreateSchema>;
 export type SupervisorUpdate = z.infer<typeof supervisorUpdateSchema>;
+export type ReportingPreference = typeof reportingPreferences.$inferSelect;
+export type InsertReportingPreference = z.infer<typeof insertReportingPreferenceSchema>;
+export type ReportingPreferencesUpdate = z.infer<typeof reportingPreferencesUpdateSchema>;

@@ -4,6 +4,7 @@ import {
   accessLogs,
   adminUsers,
   companyTags,
+  reportingPreferences,
   type Video,
   type InsertVideo,
   type MagicLink,
@@ -15,10 +16,12 @@ import {
   type CompanyTag,
   type InsertCompanyTag,
   type SupervisorCreate,
-  type SupervisorUpdate
+  type SupervisorUpdate,
+  type ReportingPreference,
+  type ReportingPreferencesUpdate,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sum, or, sql } from "drizzle-orm";
+import { eq, and, desc, count, sum, or, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Video methods
@@ -58,6 +61,11 @@ export interface IStorage {
   getSupervisors(companyTag?: string): Promise<AdminUser[]>;
   createSupervisor(supervisor: SupervisorCreate & { role?: "SUPERVISOR" }): Promise<AdminUser>;
   updateSupervisor(id: string, supervisor: SupervisorUpdate & { role?: "SUPERVISOR" }): Promise<AdminUser>;
+
+  // Reporting preferences methods
+  getReportingPreferences(supervisorId: string): Promise<ReportingPreference | undefined>;
+  getReportingPreferencesForSupervisors(supervisorIds: string[]): Promise<ReportingPreference[]>;
+  upsertReportingPreferences(supervisorId: string, preferences: ReportingPreferencesUpdate): Promise<ReportingPreference>;
 
   // Company tag methods
   getCompanyTagByName(name: string): Promise<CompanyTag | undefined>;
@@ -354,6 +362,50 @@ export class DatabaseStorage implements IStorage {
       .where(eq(adminUsers.id, id))
       .returning();
     return user;
+  }
+
+  async getReportingPreferences(supervisorId: string): Promise<ReportingPreference | undefined> {
+    const [preference] = await db.select().from(reportingPreferences)
+      .where(eq(reportingPreferences.supervisorId, supervisorId));
+
+    return preference || undefined;
+  }
+
+  async getReportingPreferencesForSupervisors(supervisorIds: string[]): Promise<ReportingPreference[]> {
+    if (supervisorIds.length === 0) {
+      return [];
+    }
+
+    return await db.select().from(reportingPreferences)
+      .where(inArray(reportingPreferences.supervisorId, supervisorIds));
+  }
+
+  async upsertReportingPreferences(
+    supervisorId: string,
+    preferences: ReportingPreferencesUpdate,
+  ): Promise<ReportingPreference> {
+    const existing = await this.getReportingPreferences(supervisorId);
+
+    if (existing) {
+      const [updated] = await db.update(reportingPreferences)
+        .set({
+          ...preferences,
+          updatedAt: new Date(),
+        })
+        .where(eq(reportingPreferences.supervisorId, supervisorId))
+        .returning();
+
+      return updated;
+    }
+
+    const [created] = await db.insert(reportingPreferences)
+      .values({
+        supervisorId,
+        ...preferences,
+      })
+      .returning();
+
+    return created;
   }
 
   // Company tag methods

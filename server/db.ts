@@ -57,6 +57,21 @@ export async function ensureDatabaseSchema(): Promise<void> {
       await client.query("ALTER TABLE access_logs ADD COLUMN completion_notified boolean NOT NULL DEFAULT false");
       console.log("✅ Added completion_notified column to access_logs table");
     }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reporting_preferences (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        supervisor_id varchar NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        send_completion_emails boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS reporting_preferences_supervisor_id_key
+      ON reporting_preferences (supervisor_id)
+    `);
   } catch (error) {
     console.error("❌ Failed to ensure database schema:", error);
     throw error;
