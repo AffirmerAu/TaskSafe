@@ -316,6 +316,7 @@ export default function AdminCompletions() {
             onClick={exportToCSV}
             disabled={filteredCompletions.length === 0}
             data-testid="button-export-csv"
+            className="hidden sm:inline-flex"
           >
             <DownloadIcon className="h-4 w-4 mr-2" />
             Export CSV
