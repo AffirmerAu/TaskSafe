@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const FALLBACK_LOCAL_HOST = 'localhost:5000';
+const TASKSAFE_PRIMARY_DOMAIN = 'https://tasksafe.au';
 
 const DEPLOYMENT_ENV_KEYS = [
   'MAGIC_LINK_BASE_URL',
@@ -37,10 +38,22 @@ function normalizeBaseUrl(
   return `${protocol}://${trimmed}`;
 }
 
+function isRenderHostname(baseUrl: string): boolean {
+  try {
+    const { hostname } = new URL(baseUrl);
+    return hostname.endsWith('.onrender.com');
+  } catch {
+    return false;
+  }
+}
+
 function resolveMagicLinkBaseUrl(): string {
   for (const key of DEPLOYMENT_ENV_KEYS) {
     const normalized = normalizeBaseUrl(process.env[key]);
     if (normalized) {
+      if (key === 'RENDER_EXTERNAL_URL' && isRenderHostname(normalized)) {
+        return TASKSAFE_PRIMARY_DOMAIN;
+      }
       return normalized;
     }
   }
