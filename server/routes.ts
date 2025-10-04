@@ -8,6 +8,7 @@ import {
   adminLoginSchema,
   adminCreateUserSchema,
   insertVideoSchema,
+  insertLibraryVideoSchema,
   insertCompanyTagSchema,
   supervisorCreateSchema,
   supervisorUpdateSchema,
@@ -434,6 +435,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get videos error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Library video management
+  app.get("/api/admin/library", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const library = await storage.getLibraryVideos();
+      res.json(library);
+    } catch (error) {
+      console.error("Get library videos error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/library", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Only administrators can add library videos" });
+      }
+
+      const libraryVideoData = insertLibraryVideoSchema.parse(req.body);
+      const video = await storage.createLibraryVideo(libraryVideoData);
+      res.json(video);
+    } catch (error) {
+      console.error("Create library video error:", error);
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  app.patch("/api/admin/library/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Only administrators can update library videos" });
+      }
+
+      const { id } = req.params;
+      const updates = insertLibraryVideoSchema.partial().parse(req.body);
+      const existingVideo = await storage.getLibraryVideo(id);
+      if (!existingVideo) {
+        return res.status(404).json({ message: "Library video not found" });
+      }
+
+      const video = await storage.updateLibraryVideo(id, updates);
+      res.json(video);
+    } catch (error) {
+      console.error("Update library video error:", error);
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  app.delete("/api/admin/library/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+      if (adminUser.role === "SUPERVISOR") {
+        return res.status(403).json({ message: "Only administrators can delete library videos" });
+      }
+
+      const { id } = req.params;
+      const existingVideo = await storage.getLibraryVideo(id);
+      if (!existingVideo) {
+        return res.status(404).json({ message: "Library video not found" });
+      }
+
+      await storage.deleteLibraryVideo(id);
+      res.json({ message: "Library video deleted successfully" });
+    } catch (error) {
+      console.error("Delete library video error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/library/:id/copy", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const adminUser = req.session.adminUser!;
+      const libraryVideo = await storage.getLibraryVideo(id);
+
+      if (!libraryVideo) {
+        return res.status(404).json({ message: "Library video not found" });
+      }
+
+      let targetCompanyTag = adminUser.companyTag?.trim() || null;
+
+      if (adminUser.role === "SUPER_ADMIN") {
+        const companyTag = typeof req.body?.companyTag === "string" ? req.body.companyTag.trim() : "";
+        if (!companyTag) {
+          return res.status(400).json({ message: "Company tag is required" });
+        }
+        targetCompanyTag = companyTag;
+      }
+
+      if (!targetCompanyTag) {
+        return res.status(403).json({ message: "Company assignment required" });
+      }
+
+      const newVideo = await storage.createVideo({
+        title: libraryVideo.title,
+        description: libraryVideo.description,
+        thumbnailUrl: libraryVideo.thumbnailUrl,
+        videoUrl: libraryVideo.videoUrl,
+        duration: libraryVideo.duration,
+        category: libraryVideo.category,
+        companyTag: targetCompanyTag,
+        completionEmail: libraryVideo.completionEmail ?? null,
+        isActive: libraryVideo.isActive,
+      });
+
+      res.json(newVideo);
+    } catch (error) {
+      console.error("Copy library video error:", error);
+      res.status(400).json({ message: "Invalid request" });
     }
   });
 

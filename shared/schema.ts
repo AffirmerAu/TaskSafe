@@ -32,6 +32,19 @@ export const reportingPreferences = pgTable("reporting_preferences", {
   supervisorUnique: uniqueIndex("reporting_preferences_supervisor_id_key").on(table.supervisorId),
 }));
 
+export const libraryVideos = pgTable("library_videos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  thumbnailUrl: text("thumbnail_url").notNull(),
+  videoUrl: text("video_url").notNull(),
+  duration: text("duration").notNull(),
+  category: text("category").notNull(),
+  completionEmail: text("completion_email"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -145,6 +158,27 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
   ),
 });
 
+export const insertLibraryVideoSchema = createInsertSchema(libraryVideos).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  completionEmail: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value ?? null;
+      }
+
+      const trimmed = value.trim();
+      return trimmed === "" ? null : trimmed;
+    },
+    z
+      .string()
+      .email("Please enter a valid email address")
+      .nullable()
+      .optional(),
+  ),
+});
+
 export const insertMagicLinkSchema = createInsertSchema(magicLinks).omit({
   id: true,
   token: true,
@@ -204,6 +238,8 @@ export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type LibraryVideo = typeof libraryVideos.$inferSelect;
+export type InsertLibraryVideo = z.infer<typeof insertLibraryVideoSchema>;
 export type MagicLink = typeof magicLinks.$inferSelect;
 export type InsertMagicLink = z.infer<typeof insertMagicLinkSchema>;
 export type AccessLog = typeof accessLogs.$inferSelect;

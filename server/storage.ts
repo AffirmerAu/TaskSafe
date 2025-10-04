@@ -1,5 +1,6 @@
 import {
   videos,
+  libraryVideos,
   magicLinks,
   accessLogs,
   adminUsers,
@@ -7,6 +8,8 @@ import {
   reportingPreferences,
   type Video,
   type InsertVideo,
+  type LibraryVideo,
+  type InsertLibraryVideo,
   type MagicLink,
   type InsertMagicLink,
   type AccessLog,
@@ -31,6 +34,13 @@ export interface IStorage {
   updateVideo(id: string, video: Partial<InsertVideo>): Promise<Video>;
   getAllVideos(companyTag?: string): Promise<Video[]>;
   deleteVideo(id: string): Promise<void>;
+
+  // Library video methods
+  getLibraryVideos(): Promise<LibraryVideo[]>;
+  getLibraryVideo(id: string): Promise<LibraryVideo | undefined>;
+  createLibraryVideo(video: InsertLibraryVideo): Promise<LibraryVideo>;
+  updateLibraryVideo(id: string, video: Partial<InsertLibraryVideo>): Promise<LibraryVideo>;
+  deleteLibraryVideo(id: string): Promise<void>;
   
   // Magic link methods
   createMagicLink(magicLink: InsertMagicLink & { token: string; expiresAt: Date }): Promise<MagicLink>;
@@ -95,6 +105,42 @@ export class DatabaseStorage implements IStorage {
       .values(insertVideo)
       .returning();
     return video;
+  }
+
+  async getLibraryVideos(): Promise<LibraryVideo[]> {
+    return await db
+      .select()
+      .from(libraryVideos)
+      .orderBy(desc(libraryVideos.createdAt));
+  }
+
+  async getLibraryVideo(id: string): Promise<LibraryVideo | undefined> {
+    const [video] = await db
+      .select()
+      .from(libraryVideos)
+      .where(eq(libraryVideos.id, id));
+    return video || undefined;
+  }
+
+  async createLibraryVideo(insertVideo: InsertLibraryVideo): Promise<LibraryVideo> {
+    const [video] = await db
+      .insert(libraryVideos)
+      .values(insertVideo)
+      .returning();
+    return video;
+  }
+
+  async updateLibraryVideo(id: string, video: Partial<InsertLibraryVideo>): Promise<LibraryVideo> {
+    const [updatedVideo] = await db
+      .update(libraryVideos)
+      .set(video)
+      .where(eq(libraryVideos.id, id))
+      .returning();
+    return updatedVideo;
+  }
+
+  async deleteLibraryVideo(id: string): Promise<void> {
+    await db.delete(libraryVideos).where(eq(libraryVideos.id, id));
   }
 
   async createMagicLink(magicLink: InsertMagicLink & { token: string; expiresAt: Date }): Promise<MagicLink> {

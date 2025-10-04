@@ -18,6 +18,7 @@ import {
   UserCog,
   Home,
   Mail,
+  BookOpen,
 } from "lucide-react";
 import type { Video } from "@shared/schema";
 
@@ -34,6 +35,7 @@ import AdminUsers from "@/pages/admin-users";
 import AdminCompanyTags from "@/pages/admin-company-tags";
 import AdminSupervisors from "@/pages/admin-supervisors";
 import AdminReporting from "@/pages/admin-reporting";
+import AdminLibrary from "@/pages/admin-library";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdmin();
@@ -51,6 +53,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     ...((adminUser?.role === "SUPER_ADMIN" || adminUser?.role === "ADMIN")
       ? [{ name: "Supervisors", href: "/admin/supervisors", icon: UserCog }]
       : []),
+    { name: "Library", href: "/admin/library", icon: BookOpen },
     { name: "Videos", href: "/admin/videos", icon: VideoIcon },
     { name: "Completions", href: "/admin/completions", icon: BarChart3 },
     ...(adminUser?.role === "SUPERVISOR"
@@ -391,6 +394,7 @@ export default function AdminDashboard() {
     <AdminLayout>
       <Switch>
         <Route path="/admin" component={AdminDashboardHome} />
+        <Route path="/admin/library" component={AdminLibrary} />
         <Route path="/admin/videos" component={AdminVideos} />
         <Route path="/admin/completions" component={AdminCompletions} />
         {(adminUser.role === "SUPER_ADMIN" || adminUser.role === "ADMIN") && (
