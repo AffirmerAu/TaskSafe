@@ -11,6 +11,7 @@ import {
   insertCompanyTagSchema,
   supervisorCreateSchema,
   supervisorUpdateSchema,
+  reportingPreferencesUpdateSchema,
 } from "@shared/schema";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
@@ -192,21 +193,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ) {
         const video = await storage.getVideo(existingLog.videoId);
 
-        if (video?.completionEmail) {
-          const emailParams = generateCompletionNotificationEmail({
-            to: video.completionEmail,
-            viewerEmail: existingLog.email,
-            viewerName: existingLog.userName,
-            videoTitle: video.title,
-            completedAt: new Date(),
-          });
+        if (video) {
+          const companyTag = existingLog.companyTag ?? video.companyTag ?? undefined;
+          const supervisors = companyTag
+            ? await storage.getSupervisors(companyTag)
+            : [];
 
-          const emailSent = await sendEmail(emailParams);
+          if (supervisors.length > 0) {
+            const preferences = await storage.getReportingPreferencesForSupervisors(
+              supervisors.map((supervisor) => supervisor.id),
+            );
+            const preferenceMap = new Map(
+              preferences.map((preference) => [preference.supervisorId, preference] as const),
+            );
 
-          if (emailSent) {
-            await storage.markAccessLogCompletionNotified(accessLogId);
-          } else {
-            console.error("Failed to send completion notification email for access log", accessLogId);
+            let notificationSent = false;
+
+            for (const supervisor of supervisors) {
+              const preference = preferenceMap.get(supervisor.id);
+              const wantsEmail = preference ? preference.sendCompletionEmails : true;
+
+              if (!wantsEmail) {
+                continue;
+              }
+
+              const emailParams = generateCompletionNotificationEmail({
+                to: supervisor.email,
+                viewerEmail: existingLog.email,
+                viewerName: existingLog.userName,
+                videoTitle: video.title,
+                completedAt: new Date(),
+              });
+
+              const emailSent = await sendEmail(emailParams);
+
+              if (emailSent) {
+                notificationSent = true;
+              } else {
+                console.error(
+                  "Failed to send completion notification email to supervisor",
+                  supervisor.id,
+                  "for access log",
+                  accessLogId,
+                );
+              }
+            }
+
+            if (notificationSent) {
+              await storage.markAccessLogCompletionNotified(accessLogId);
+            }
           }
         }
       }
@@ -647,6 +682,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete supervisor error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/reporting/preferences", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role !== "SUPERVISOR") {
+        return res.status(403).json({ message: "Supervisor access required" });
+      }
+
+      const preferences = await storage.getReportingPreferences(adminUser.id);
+
+      if (preferences) {
+        res.json(preferences);
+        return;
+      }
+
+      res.json({
+        id: null,
+        supervisorId: adminUser.id,
+        sendCompletionEmails: true,
+        createdAt: null,
+        updatedAt: null,
+      });
+    } catch (error) {
+      console.error("Get reporting preferences error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/reporting/preferences", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.session.adminUser!;
+
+      if (adminUser.role !== "SUPERVISOR") {
+        return res.status(403).json({ message: "Supervisor access required" });
+      }
+
+      const updates = reportingPreferencesUpdateSchema.parse(req.body);
+      const preferences = await storage.upsertReportingPreferences(adminUser.id, updates);
+
+      res.json(preferences);
+    } catch (error) {
+      console.error("Update reporting preferences error:", error);
+      res.status(400).json({ message: "Invalid request" });
     }
   });
 
