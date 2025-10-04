@@ -71,9 +71,9 @@ const cases: TestCase[] = [
     expectedBase: 'https://custom.example',
   },
   {
-    name: 'falls back to Render external URL',
-    env: { RENDER_EXTERNAL_URL: 'https://render.example.com' },
-    expectedBase: 'https://render.example.com',
+    name: 'prefers TaskSafe domain over Render default host',
+    env: { RENDER_EXTERNAL_URL: 'https://tasksafe.onrender.com' },
+    expectedBase: 'https://tasksafe.au',
   },
   {
     name: 'normalizes provider URL without protocol',
