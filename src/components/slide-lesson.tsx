@@ -135,6 +135,9 @@ export default function SlideLesson({
   const [fb, setFb] = useState<{ ok: boolean; html: string } | null>(null);
   const [dir, setDir] = useState("fwd");
   const [tutorOpen, setTutorOpen] = useState(false);
+  // Quiz score tracking
+  const [correctCount, setCorrectCount] = useState(0);
+  const totalQuestions = slides.filter(s => s.kind === "question").length;
 
   const slide = slides[i];
   const audio = !!audioMode;
@@ -150,12 +153,28 @@ export default function SlideLesson({
     );
   };
 
-  const finish = async () => { stopSpeaking(); await saveProgress(slides.length - 1, true); router.push("/course"); };
+  const finish = async (finalCorrect: number) => {
+    stopSpeaking();
+    const passed = totalQuestions === 0 || (finalCorrect / totalQuestions) >= 0.8;
+    await saveProgress(slides.length - 1, true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const profile = user
+      ? (await supabase.from("profiles").select("first_name, full_name").eq("id", user.id).maybeSingle()).data
+      : null;
+    const name = profile?.first_name || profile?.full_name?.split(" ")[0] || "";
+    await fetch("/api/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, courseId, correct: finalCorrect, total: totalQuestions, passed, lang }),
+    });
+    router.push(`/results?correct=${finalCorrect}&total=${totalQuestions}&passed=${passed ? 1 : 0}&name=${encodeURIComponent(name)}`);
+  };
 
   const goNext = () => {
     stopSpeaking();
     const next = slides[i + 1];
-    if (!next) { finish(); return; }
+    if (!next) { finish(correctCount); return; }
     if (next.kind === "video") setVideoDone(false);
     setDir("fwd"); setI(i + 1); saveProgress(i + 1);
   };
@@ -165,10 +184,16 @@ export default function SlideLesson({
   const answer = (key: string) => {
     const q = slide.payload;
     const ok = key === q.correct;
-    if (q.last && ok) { finish(); return; }
+    const newCorrect = ok ? correctCount + 1 : correctCount;
+    if (ok) setCorrectCount(newCorrect);
     setFb({ ok, html: ok ? q.okHtml : q.noHtml });
   };
-  const clearFb = () => { setFb(null); goNext(); };
+  const clearFb = () => {
+    const q = slide.payload;
+    setFb(null);
+    if (q?.last) { finish(correctCount); return; }
+    goNext();
+  };
 
   if (!slide) return null;
   const prog = slide.progress_pct ?? Math.round(((i + 1) / slides.length) * 100);

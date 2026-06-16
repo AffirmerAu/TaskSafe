@@ -20,11 +20,16 @@ create extension if not exists vector;
 -- ── Profiles (1:1 with auth.users) ──────────────────────────────
 create table if not exists profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
+  first_name  text,
+  last_name   text,
   full_name   text,
   role        text,                       -- e.g. "Traffic Controller · Northbridge Site 4"
   language    text default 'en',
   created_at  timestamptz default now()
 );
+-- Add name columns if upgrading from an older schema
+alter table profiles add column if not exists first_name text;
+alter table profiles add column if not exists last_name  text;
 
 -- ── Course catalogue ────────────────────────────────────────────
 create table if not exists courses (
@@ -189,3 +194,20 @@ create policy "unlocked slides" on slides for select using (
 -- cannot read it directly. The content layer reaches it only via the
 -- service-role key AND only after computing the user's unlocked module ids.
 alter table content_chunks enable row level security;
+
+-- ── Completions (lesson results) ────────────────────────────────
+create table if not exists completions (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid references auth.users(id) on delete cascade not null,
+  lesson_id        uuid references lessons(id)  on delete cascade not null,
+  course_id        uuid references courses(id)  on delete cascade not null,
+  correct_answers  int  not null default 0,
+  total_questions  int  not null default 0,
+  passed           boolean not null default false,
+  language         text default 'en',
+  completed_at     timestamptz default now(),
+  unique (user_id, lesson_id)   -- only keep the latest attempt per user/lesson
+);
+alter table completions enable row level security;
+-- Workers can read and write their own completions only
+create policy "own completions" on completions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Routes that require a signed-in user.
-const PROTECTED = ["/course", "/lesson"];
+const PROTECTED = ["/course", "/lesson", "/welcome", "/results"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -38,8 +38,8 @@ export async function middleware(request: NextRequest) {
 
   if (needsAuth && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
+    url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
