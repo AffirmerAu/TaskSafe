@@ -3,8 +3,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-const CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || "text-embedding-004";
+const CHAT_MODEL  = process.env.GEMINI_MODEL       || "gemini-2.0-flash";
+// text-embedding-004 was shut down Jan 2026; gemini-embedding-001 is the replacement.
+// We request 768 output dims so it matches the existing vector(768) DB column.
+const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || "gemini-embedding-001";
+const EMBED_DIMS  = 768;
 
 function client() {
   if (!genAI) throw new Error("GEMINI_API_KEY is not set");
@@ -13,9 +16,31 @@ function client() {
 
 /** Embed a single piece of text → 768-dim vector. */
 export async function embed(text: string): Promise<number[]> {
-  const model = client().getGenerativeModel({ model: EMBED_MODEL });
-  const res = await model.embedContent(text);
-  return res.embedding.values;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+
+  // Call the REST API directly so we can set outputDimensionality (the JS SDK
+  // doesn't expose this param yet). This keeps vectors at 768 dims to match
+  // the existing pgvector column — no DB migration needed.
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: `models/${EMBED_MODEL}`,
+      content: { parts: [{ text }] },
+      outputDimensionality: EMBED_DIMS,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gemini embed failed (${res.status}): ${body}`);
+  }
+
+  const data = await res.json();
+  return data.embedding.values as number[];
 }
 
 const TUTOR_SYSTEM = `You are the Affirmer safety guide — a friendly Work Health & Safety
