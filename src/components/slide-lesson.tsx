@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
-import TutorChat from "@/components/tutor-chat";
 import { speak, stopSpeaking } from "@/lib/voice";
 import { createClient } from "@/lib/supabase-browser";
 
@@ -134,7 +133,6 @@ export default function SlideLesson({
   const [videoDone, setVideoDone] = useState(false);
   const [fb, setFb] = useState<{ ok: boolean; html: string } | null>(null);
   const [dir, setDir] = useState("fwd");
-  const [tutorOpen, setTutorOpen] = useState(false);
   // Quiz score tracking
   const [correctCount, setCorrectCount] = useState(0);
   const totalQuestions = slides.filter(s => s.kind === "question").length;
@@ -250,7 +248,7 @@ export default function SlideLesson({
       </div>
     );
     sheet = (
-      <div className="lslide__sheet lslide__sheet--compact">
+      <div className="lslide__sheet lslide__sheet--compact" style={{ paddingBottom: 32 }}>
         <div className="lslide__eyebrow">{slide.eyebrow}</div>
         <div className="lslide__text">{slide.body}</div>
         <button className="btn btn--primary lslide__btn" disabled={!videoDone} onClick={goNext}>
@@ -261,7 +259,7 @@ export default function SlideLesson({
   } else if (slide.kind === "content") {
     media = <SlideMedia slide={slide} square />;
     sheet = (
-      <div className="lslide__sheet">
+      <div className="lslide__sheet" style={{ paddingBottom: 32 }}>
         <div className="lslide__eyebrow">{slide.eyebrow}</div>
         <div className="lslide__title">{slide.title}</div>
         <div className="lslide__text">{slide.body}</div>
@@ -278,7 +276,7 @@ export default function SlideLesson({
       </div>
     );
     sheet = (
-      <div className="lslide__sheet">
+      <div className="lslide__sheet" style={{ paddingBottom: 32 }}>
         <div className="lslide__eyebrow">{slide.eyebrow}</div>
         <div className="lslide__title">{slide.title}</div>
         <div className="lslide__text">{slide.body}</div>
@@ -331,17 +329,12 @@ export default function SlideLesson({
         <div className="lbl">{prog}%</div>
       </div>
 
-      <div className="lesson">
+      <div className="lesson" style={{ overflowY: "auto", flex: 1 }}>
         <div className={"lslide lslide--" + dir} key={key}>
           {media}
           {sheet}
         </div>
       </div>
-
-      <button className="askbtn" onClick={() => setTutorOpen(true)}>
-        <Icon name="mic" size={16} /> Ask the guide
-      </button>
-      <TutorChat courseId={courseId} lang={lang} open={tutorOpen} onClose={() => setTutorOpen(false)} />
     </div>
   );
 }
