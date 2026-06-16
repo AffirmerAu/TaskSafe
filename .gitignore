@@ -1,7 +1,17 @@
+# dependencies & build output
 node_modules
 .next
-.env.local
+out
+
+# environment files — NEVER commit real keys (this protects you from GitHub's secret block)
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# misc
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
